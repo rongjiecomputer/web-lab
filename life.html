@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Game of life</title>
+<style>
+#board {
+  position: relative;
+  height: 500px;
+  margin: 8px 8px 8px 8px;
+}
+#board div {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 1px solid #8AC007;
+}
+.live {
+  background-color: #C1FF86;
+}
+.dead {
+  background-color: #000000;
+}
+#data {
+  margin: 8px 8px 8px 8px;
+}
+</style>
+</head>
+
+<body>
+<h3>Game of Life in javascript</h3>
+<div id="board"></div>
+<fieldset>
+<legend>Panel</legend>
+<button onclick="play()">Play</button>
+<button onclick="stop()">Stop</button>
+<button onclick="reset()">Reset</button>
+<button onclick="importdata()">Import</button>
+<button onclick="exportdata()">Save</button>
+<select onchange="stop(); interval = parseInt(this.value);">
+<option value="1000">Slow</option>
+<option selected="selected" value="500">Default</option>
+<option value="100">Fast</option>
+<option value="50">Hyper</option>
+</select>
+<select onchange="stop(); clearboard(); cells = parseInt(this.value); loadcell();">
+<option selected="selected" value="50">50</value>
+<option value="100">100</value>
+</select>
+<select onchange="stop(); external(pattern[parseInt(this.value)]);">
+<option selected="selected" value="0">Blank</option>
+<option value="1">Still lifes</option>
+<option value="2">Gliders</option>
+<option value="3">Spaceships</option>
+<option value="4">Oscillators</option>
+<option value="5">Methuselah</option>
+<option value="6">Diehard</option>
+<option value="7">R-pentomino</option>
+<option value="8">Once-cell thick (infinite)</option>
+<option value="9">Gosper glider gun (infinite)</option>
+<option value="10">Space filler (infinite)</option>
+</select>
+</fieldset>
+<div id="data"></div>
+
+<script>
+var grid = [];
+for (var i = 0; i <= 101; i++) {
+    grid[i] = [];
+}
+for (var i = 0; i <= 101; i++) {
+    for (var j = 0; j <= 101; j++) {
+        grid[i][j] = 0;
+    }
+}
+var node = [];
+for (var i = 0; i < 100; i++) {
+    node[i] = [];
+}
+var board = document.getElementById('board');
+for (var i = 0; i < 100; i++) {
+    for (var j = 0; j < 100; j++) {
+        node[i][j] = document.createElement("div");
+        node[i][j].className = "dead";
+        node[i][j].style.top = "" + i*10 + "px";
+        node[i][j].style.left = "" + j*10 + "px";
+        node[i][j].onclick = function() { this.className = (this.className == 'live' ? 'dead' : 'live'); };
+    }
+}
+var cells = 50;
+function loadcell() {
+    board.style.height = "" + cells*10 + "px";
+    for (var i = 0; i < cells; i++) {
+        for (var j = 0; j < cells; j++) {
+            board.appendChild(node[i][j]);
+        }
+    }
+}
+function clearboard() {
+    stop();
+    for (var i = 0; i < cells; i++) {
+        for (var j = 0; j < cells; j++) {
+            board.removeChild(node[i][j]);
+        }
+    }
+}
+loadcell();
+function main() {
+    for (var i = 0; i < cells; i++) {
+        for (var j = 0; j < cells; j++) {
+            grid[i+1][j+1] = (node[i][j].className == "live");
+        }
+    }
+    for (var i = 1; i <= cells; i++) {
+        for (var j = 1; j <= cells; j++) {
+            var c = grid[i-1][j-1] + grid[i-1][j] + grid[i-1][j+1]
+                  + grid[i][j-1] + grid[i][j+1]
+                  + grid[i+1][j-1] + grid[i+1][j] + grid[i+1][j+1];
+            if (grid[i][j]) {
+                if (c < 2 || c > 3) node[i-1][j-1].className = "dead";
+            } else {
+                if (c == 3) node[i-1][j-1].className = "live";
+            }
+        }
+    }
+}
+var isRunning = 0, loop, interval = 500;
+function play() {
+    if (!isRunning) {
+        loop = setInterval(main, interval);
+        isRunning = 1;
+    } else {
+        alert("setInterval() is still running!");
+    }
+}
+function stop() {
+    if (isRunning) {
+        clearInterval(loop);
+        isRunning = 0;
+    }
+}
+function reset() {
+    stop();
+    for (var i = 0; i < cells; i++) {
+        for (var j = 0; j < cells; j++) {
+            node[i][j].className = "dead";
+        }
+    }
+}
+function external(e) {
+    stop();
+    reset();
+    for (var i = 0; i < e.length;  i += 2) {
+        node[e[i]][e[i+1]].className = "live";
+    }
+}
+function importdata() {
+    stop();
+    var p = prompt("Please paste a previously saved data", "[10, 20, 30, 30]");
+    if (p != null) {
+        try {
+            var arr = JSON.parse(p);
+            external(arr);
+        } catch (e) {
+            alert("The data is invalid!");
+        }
+    }
+}
+var dt = document.getElementById("data");
+function exportdata() {
+    stop();
+    var data = "[";
+    for (var i = 0; i < cells; i++) {
+        for (var j = 0; j < cells; j++) {
+            if (node[i][j].className != "dead") {
+                data += "" + i + ", " + j + ", ";
+            }
+        }
+    }
+    var trim;
+    if (data.length > 1) {
+        trim = data.slice(0, data.length-2);
+    } else {
+        trim = data;
+    }
+    trim += "]";
+    dt.innerHTML = "<h4>Exported data</h4>" + trim;
+}
+var pattern = [[],
+[15, 9, 15, 10, 15, 16, 15, 17, 15, 24, 15, 25, 15, 30, 15, 31, 16, 9, 16, 10, 16, 15, 16, 18, 16, 23, 16, 26, 16, 30, 16, 32, 17, 16, 17, 17, 17, 24, 17, 26, 17, 31, 18, 25],
+[15, 25, 15, 26, 15, 27, 16, 25, 17, 26, 20, 18, 20, 19, 20, 20, 21, 20, 22, 19, 23, 27, 23, 28, 24, 28, 24, 29, 25, 27],
+[12, 4, 12, 7, 13, 8, 14, 4, 14, 8, 15, 5, 15, 6, 15, 7, 15, 8, 21, 6, 22, 4, 22, 8, 23, 9, 24, 4, 24, 9, 25, 5, 25, 6, 25, 7, 25, 8, 25, 9, 30, 6, 30, 7, 31, 4, 31, 9, 32, 10, 33, 4, 33, 10, 34, 5, 34, 6, 34, 7, 34, 8, 34, 9, 34, 10],
+[12, 10, 12, 31, 12, 32, 13, 10, 13, 19, 13, 20, 13, 21, 13, 31, 13, 32, 14, 10, 14, 18, 14, 19, 14, 20, 14, 33, 14, 34, 15, 33, 15, 34, 25, 38, 26, 38, 27, 38, 28, 16, 28, 38, 29, 15, 29, 16, 29, 17, 29, 38, 30, 15, 30, 17, 30, 38, 31, 15, 31, 16, 31, 17, 31, 38, 32, 16, 32, 38, 33, 38, 34, 38],
+[22, 18, 22, 19, 22, 23, 22, 25, 23, 18, 23, 19, 23, 24, 24, 24],
+[25, 20, 26, 14, 26, 15, 27, 15, 27, 19, 27, 20, 27, 21],
+[20, 22, 20, 23, 21, 23, 21, 24, 22, 23],
+[26, 7, 26, 8, 26, 9, 26, 10, 26, 11, 26, 12, 26, 13, 26, 14, 26, 16, 26, 17, 26, 18, 26, 19, 26, 20, 26, 24, 26, 25, 26, 26, 26, 33, 26, 34, 26, 35, 26, 36, 26, 37, 26, 38, 26, 39, 26, 41, 26, 42, 26, 43, 26, 44, 26, 45],
+[16, 32, 17, 30, 17, 32, 18, 20, 18, 21, 18, 28, 18, 29, 18, 42, 18, 43, 19, 19, 19, 23, 19, 28, 19, 29, 19, 42, 19, 43, 20, 8, 20, 9, 20, 18, 20, 24, 20, 28, 20, 29, 21, 8, 21, 9, 21, 18, 21, 22, 21, 24, 21, 25, 21, 30, 21, 32, 22, 18, 22, 24, 22, 32, 23, 19, 23, 23, 24, 20, 24, 21],
+[9, 28, 10, 27, 10, 28, 10, 29, 11, 22, 11, 23, 11, 24, 11, 29, 11, 30, 12, 21, 12, 24, 12, 25, 12, 26, 12, 29, 12, 31, 12, 32, 13, 20, 13, 24, 13, 26, 13, 29, 13, 31, 14, 20, 14, 25, 14, 27, 14, 29, 14, 31, 14, 33, 14, 34, 15, 22, 15, 27, 15, 29, 15, 33, 15, 34, 16, 10, 16, 11, 16, 12, 16, 13, 16, 19, 16, 21, 16, 26, 16, 30, 16, 32, 16, 33, 16, 34, 17, 10, 17, 14, 17, 15, 17, 17, 17, 19, 17, 20, 17, 21, 17, 23, 17, 24, 17, 34, 17, 35, 18, 10, 18, 16, 18, 17, 18, 23, 19, 11, 19, 14, 19, 15, 19, 17, 19, 20, 19, 23, 19, 25, 19, 26, 20, 17, 20, 19, 20, 21, 20, 23, 20, 25, 20, 27, 20, 33, 20, 34, 20, 35, 20, 36, 21, 11, 21, 14, 21, 15, 21, 17, 21, 20, 21, 23, 21, 26, 21, 27, 21, 29, 21, 31, 21, 32, 21, 36, 22, 10, 22, 16, 22, 17, 22, 21, 22, 23, 22, 25, 22, 29, 22, 30, 22, 36, 23, 10, 23, 14, 23, 15, 23, 17, 23, 19, 23, 20, 23, 23, 23, 26, 23, 29, 23, 31, 23, 32, 23, 35, 24, 10, 24, 11, 24, 12, 24, 13, 24, 19, 24, 21, 24, 23, 24, 25, 24, 27, 24, 29, 25, 20, 25, 21, 25, 23, 25, 26, 25, 29, 25, 31, 25, 32, 25, 35, 26, 23, 26, 29, 26, 30, 26, 36, 27, 11, 27, 12, 27, 22, 27, 23, 27, 25, 27, 26, 27, 27, 27, 29, 27, 31, 27, 32, 27, 36, 28, 12, 28, 13, 28, 14, 28, 16, 28, 20, 28, 25, 28, 27, 28, 33, 28, 34, 28, 35, 28, 36, 29, 12, 29, 13, 29, 17, 29, 19, 29, 24, 30, 12, 30, 13, 30, 15, 30, 17, 30, 19, 30, 21, 30, 26, 31, 15, 31, 17, 31, 20, 31, 22, 31, 26, 32, 14, 32, 15, 32, 17, 32, 20, 32, 21, 32, 22, 32, 25, 33, 16, 33, 17, 33, 22, 33, 23, 33, 24, 34, 17, 34, 18, 34, 19, 35, 18]];
+</script>
+</body>
+
+</html>
