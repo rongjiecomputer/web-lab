@@ -8,4 +8,4 @@ Fortunately, I know *a bit* about javascript and it is pretty close to C++, so t
 the visualisers in javascript.
 
 ## Live demo
-<a href="http://rongjiecomputer.github.io/js-visualiser/" noindex="nofollow">http://rongjieomputer.github.io/js-visualiser/</a>
+<a href="http://rongjiecomputer.github.io/js-visualiser/">http://rongjiecomputer.github.io/js-visualiser/</a>
