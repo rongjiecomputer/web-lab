@@ -168,7 +168,7 @@ function leftshift() {
     for (var j = 1; j < cells; j++) {
       node[i][j-1].className = node[i][j].className;
     }
-    node[i][cells-1].className = "dead";
+    node[i][cells-1].className = "empty";
   }
 }
 function rightshift() {
@@ -177,7 +177,7 @@ function rightshift() {
     for (var j = cells-2; j >= 0; j--) {
       node[i][j+1].className = node[i][j].className;
     }
-    node[i][0].className = "dead";
+    node[i][0].className = "empty";
   }
 }
 function upshift() {
@@ -186,7 +186,7 @@ function upshift() {
     for (var i = 1; i < cells; i++) {
       node[i-1][j].className = node[i][j].className;
     }
-    node[cells-1][j].className = "dead";
+    node[cells-1][j].className = "empty";
   }
 }
 function downshift() {
@@ -195,7 +195,7 @@ function downshift() {
     for (var i = cells-2; i >= 0; i--) {
       node[i+1][j].className = node[i][j].className;
     }
-    node[0][j].className = "dead";
+    node[0][j].className = "empty";
   }
 }
 function external(e) {
