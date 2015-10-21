@@ -37,7 +37,7 @@
 <div id="board"></div>
 <fieldset>
 <legend>Panel</legend>
-<button onclick="play()">Play</button>
+<input type="button" onclick="play()" value="Play" id="btn">
 <button onclick="stop()">Stop</button>
 <button onclick="reset()">Reset</button>
 <button onclick="importdata()">Import</button>
@@ -64,135 +64,177 @@
 <option value="8">Complete circuit 1</option>
 <option value="9">Binary adder n=6</option>
 </select>
+<button onclick="leftshift()">&lt;</button>
+<button onclick="rightshift()">&gt;</button>
+<button onclick="upshift()"><div style="transform: rotate(90deg)">&lt;</div></button>
+<button onclick="downshift()"><div style="transform: rotate(90deg)">&gt;</div></button>
 </fieldset>
 <div id="data"></div>
 
 <script>
 var grid = [];
 for (var i = 0; i <= 101; i++) {
-    grid[i] = [];
+  grid[i] = [];
 }
 for (var i = 0; i <= 101; i++) {
-    for (var j = 0; j <= 101; j++) {
-        grid[i][j] = 0;
-    }
+  for (var j = 0; j <= 101; j++) {
+    grid[i][j] = 0;
+  }
 }
 var node = [];
 for (var i = 0; i < 100; i++) {
-    node[i] = [];
+  node[i] = [];
 }
 var board = document.getElementById('board');
 for (var i = 0; i < 100; i++) {
-    for (var j = 0; j < 100; j++) {
-        node[i][j] = document.createElement("div");
-        node[i][j].className = "empty";
-        node[i][j].style.top = "" + i*10 + "px";
-        node[i][j].style.left = "" + j*10 + "px";
-        node[i][j].onclick = function() {
-            this.className = (this.className == 'empty' ? 'conductor' : this.className == 'conductor' ? 'head' : this.className == 'head' ? 'tail' : 'empty'); 
-        };
-    }
+  for (var j = 0; j < 100; j++) {
+    node[i][j] = document.createElement("div");
+    node[i][j].className = "empty";
+    node[i][j].style.top = "" + i*10 + "px";
+    node[i][j].style.left = "" + j*10 + "px";
+    node[i][j].onclick = function() {
+      this.className = (this.className == 'empty' ? 'conductor' : this.className == 'conductor' ? 'head' : this.className == 'head' ? 'tail' : 'empty'); 
+    };
+  }
 }
 var cells = 50;
 function loadcell() {
-    board.style.height = "" + cells*10 + "px";
-    for (var i = 0; i < cells; i++) {
-        for (var j = 0; j < cells; j++) {
-            board.appendChild(node[i][j]);
-        }
+  board.style.height = "" + cells*10 + "px";
+  for (var i = 0; i < cells; i++) {
+    for (var j = 0; j < cells; j++) {
+      board.appendChild(node[i][j]);
     }
+  }
 }
 function clearboard() {
-    stop();
-    for (var i = 0; i < cells; i++) {
-        for (var j = 0; j < cells; j++) {
-            board.removeChild(node[i][j]);
-        }
+  stop();
+  for (var i = 0; i < cells; i++) {
+    for (var j = 0; j < cells; j++) {
+      board.removeChild(node[i][j]);
     }
+  }
 }
 loadcell();
 function main() {
-    for (var i = 0; i < cells; i++) {
-        for (var j = 0; j < cells; j++) {
-            grid[i+1][j+1] = (node[i][j].className == "empty" ? 0 : node[i][j].className == "head" ? 1 : node[i][j].className == "tail" ? 2 : 3);
-        }
+  for (var i = 0; i < cells; i++) {
+    for (var j = 0; j < cells; j++) {
+      grid[i+1][j+1] = (node[i][j].className == "empty" ? 0 : node[i][j].className == "head" ? 1 : node[i][j].className == "tail" ? 2 : 3);
     }
-    for (var i = 1; i <= cells; i++) {
-        for (var j = 1; j <= cells; j++) {
-            if (grid[i][j] == 1) {
-                node[i-1][j-1].className = "tail";
-            } else if (grid[i][j] == 2) {
-                node[i-1][j-1].className = "conductor";
-            } else if (grid[i][j] == 3) {
-                var c = (grid[i-1][j-1] == 1) + (grid[i-1][j] == 1) + (grid[i-1][j+1] == 1)
-                      + (grid[i][j-1] == 1) + (grid[i][j+1] == 1) + (grid[i+1][j-1] == 1)
-                      + (grid[i+1][j] == 1) + (grid[i+1][j+1] == 1);
-                if (c == 1 || c == 2) node[i-1][j-1].className = "head";
-            }
-        }
+  }
+  for (var i = 1; i <= cells; i++) {
+    for (var j = 1; j <= cells; j++) {
+      if (grid[i][j] == 1) {
+        node[i-1][j-1].className = "tail";
+      } else if (grid[i][j] == 2) {
+        node[i-1][j-1].className = "conductor";
+      } else if (grid[i][j] == 3) {
+        var c = (grid[i-1][j-1] == 1) + (grid[i-1][j] == 1) + (grid[i-1][j+1] == 1)
+              + (grid[i][j-1] == 1) + (grid[i][j+1] == 1) + (grid[i+1][j-1] == 1)
+              + (grid[i+1][j] == 1) + (grid[i+1][j+1] == 1);
+        if (c == 1 || c == 2) node[i-1][j-1].className = "head";
+      }
     }
+  }
 }
-var isRunning = 0, loop, interval = 500;
+var isRunning = false, loop, interval = 500, btn = document.getElementById('btn');
 function play() {
-    if (!isRunning) {
-        loop = setInterval(main, interval);
-        isRunning = 1;
-    } else {
-        alert("setInterval() is still running!");
-    }
+  isRunning = !isRunning;
+  if (isRunning) {
+    loop = setInterval(main, interval);
+    btn.value = "Stop";
+  } else {
+    clearInterval(loop);
+    btn.value = "Play";
+  }
 }
 function stop() {
-    if (isRunning) {
-        clearInterval(loop);
-        isRunning = 0;
-    }
+  if (isRunning) {
+    clearInterval(loop);
+    isRunning = false;
+    btn.value = "Play";
+  }
 }
 function reset() {
-    stop();
-    for (var i = 0; i < cells; i++) {
-        for (var j = 0; j < cells; j++) {
-            node[i][j].className = "empty";
-        }
+  stop();
+  for (var i = 0; i < cells; i++) {
+    for (var j = 0; j < cells; j++) {
+      node[i][j].className = "empty";
     }
+  }
+}
+function leftshift() {
+  stop();
+  for (var i = 0; i < cells; i++) {
+    for (var j = 1; j < cells; j++) {
+      node[i][j-1].className = node[i][j].className;
+    }
+    node[i][cells-1].className = "dead";
+  }
+}
+function rightshift() {
+  stop();
+  for (var i = 0; i < cells; i++) {
+    for (var j = cells-2; j >= 0; j--) {
+      node[i][j+1].className = node[i][j].className;
+    }
+    node[i][0].className = "dead";
+  }
+}
+function upshift() {
+  stop();
+  for (var j = 0; j < cells; j++) {
+    for (var i = 1; i < cells; i++) {
+      node[i-1][j].className = node[i][j].className;
+    }
+    node[cells-1][j].className = "dead";
+  }
+}
+function downshift() {
+  stop();
+  for (var j = 0; j < cells; j++) {
+    for (var i = cells-2; i >= 0; i--) {
+      node[i+1][j].className = node[i][j].className;
+    }
+    node[0][j].className = "dead";
+  }
 }
 function external(e) {
-    stop();
-    reset();
-    for (var i = 0; i < e.length;  i += 3) {
-        node[e[i]][e[i+1]].className = e[i+2];
-    }
+  reset();
+  for (var i = 0; i < e.length;  i += 3) {
+    node[e[i]][e[i+1]].className = e[i+2];
+  }
 }
 function importdata() {
-    stop();
-    var p = prompt("Please paste a previously saved data", "[10, 20, \"conductor\"]");
-    if (p != null) {
-        try {
-            var arr = JSON.parse(p);
-            external(arr);
-        } catch (e) {
-            alert("The data is invalid!");
-        }
+  stop();
+  var p = prompt("Please paste a previously saved data", "[10, 20, \"conductor\"]");
+  if (p != null) {
+    try {
+      var arr = JSON.parse(p);
+      external(arr);
+    } catch (e) {
+      alert("The data is invalid!");
     }
+  }
 }
 var dt = document.getElementById("data");
 function exportdata() {
-    stop();
-    var data = "[";
-    for (var i = 0; i < cells; i++) {
-        for (var j = 0; j < cells; j++) {
-            if (node[i][j].className != "empty") {
-                data += "" + i + ", " + j + ", \"" + node[i][j].className + "\", ";
-            }
-        }
+  stop();
+  var data = "[";
+  for (var i = 0; i < cells; i++) {
+    for (var j = 0; j < cells; j++) {
+      if (node[i][j].className != "empty") {
+        data += "" + i + ", " + j + ", \"" + node[i][j].className + "\", ";
+      }
     }
-    var trim;
-    if (data.length > 1) {
-        trim = data.slice(0, data.length-2);
-    } else {
-        trim = data;
-    }
-    trim += "]";
-    dt.innerHTML = "<h4>Exported data</h4>" + trim;
+  }
+  var trim;
+  if (data.length > 1) {
+    trim = data.slice(0, data.length-2);
+  } else {
+    trim = data;
+  }
+  trim += "]";
+  dt.innerHTML = "<h4>Exported data</h4>" + trim;
 }
 var pattern = [[],
 [11, 6, "conductor", 11, 7, "conductor", 11, 8, "conductor", 11, 9, "conductor", 11, 10, "conductor", 11, 19, "conductor", 11, 20, "conductor", 12, 5, "conductor", 12, 11, "conductor", 12, 12, "conductor", 12, 13, "conductor", 12, 14, "conductor", 12, 15, "conductor", 12, 16, "conductor", 12, 17, "conductor", 12, 18, "conductor", 12, 19, "conductor", 12, 21, "conductor", 12, 22, "conductor", 12, 23, "conductor", 12, 24, "conductor", 12, 25, "conductor", 12, 26, "conductor", 12, 27, "conductor", 12, 28, "conductor", 12, 29, "conductor", 13, 6, "head", 13, 7, "tail", 13, 8, "conductor", 13, 9, "conductor", 13, 10, "conductor", 13, 19, "conductor", 13, 20, "conductor", 18, 6, "conductor", 18, 7, "conductor", 18, 8, "conductor", 18, 9, "conductor", 18, 10, "conductor", 18, 19, "conductor", 18, 20, "conductor", 19, 5, "conductor", 19, 11, "conductor", 19, 12, "conductor", 19, 13, "conductor", 19, 14, "conductor", 19, 15, "conductor", 19, 16, "conductor", 19, 17, "conductor", 19, 18, "conductor", 19, 20, "conductor", 19, 21, "conductor", 19, 22, "conductor", 19, 23, "conductor", 19, 24, "conductor", 19, 25, "conductor", 19, 26, "conductor", 19, 27, "conductor", 19, 28, "conductor", 19, 29, "conductor", 20, 6, "head", 20, 7, "tail", 20, 8, "conductor", 20, 9, "conductor", 20, 10, "conductor", 20, 19, "conductor", 20, 20, "conductor"],
