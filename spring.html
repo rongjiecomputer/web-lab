@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Spring simulation</title>
+<meta name="description" content="Spring simulation in html5 canvas javascript, by ronjiecomputer" />
+</head>
+<body>
+<h1>Spring simulation</h1>
+<canvas id="canvas" width="600" height="500"></canvas>
+<fieldset>
+<legend>Panel</legend>
+<label><abbr title="mass">m</abbr></label>
+<input type="range" min="1" max="200" value="100" onchange="m = Number(this.value); change()">
+<label><abbr title="drag">c</abbr></label>
+<input type="range" min="0" max="200" value="100" onchange="c = Number(this.value); change()">
+<label><abrr title="spring constant">k</abbr></label>
+<input type="range" min="0" max="200" value="100" onchange="k = Number(this.value); change()">
+<input type="button" value="start" id="btn" onclick="button()">
+</fieldset>
+<script>
+var canvas = document.getElementById("canvas");
+var ctx = canvas.getContext("2d");
+var m = 100, x = 0, x0 = 20, k = 3000, c = 0.3, t = 0, omega, gamma, ohm;
+var run = false;
+function init() {
+  omega = Math.sqrt(k/m);
+  gamma = 0.5*c/m;
+  t = 0;
+  x = x0;
+  draw();
+}
+var btn = document.getElementById('btn');
+function button() {
+  run = !run;
+  if (run) {
+    btn.value = "stop";
+    loop();
+  } else {
+    btn.value = "start";
+  }
+}
+function loop() {
+  ohm = omega*omega - gamma*gamma;
+  if (ohm > 0) {
+    ohm = Math.sqrt(ohm);
+    x = Math.exp(-gamma*t)*x0*(Math.cos(ohm*t)+gamma*Math.sin(ohm*t)/ohm);
+  } else if (ohm < 0) {
+    ohm *= -1;
+    ohm = Math.sqrt(ohm);
+    x = Math.exp(-gamma*t)*x0*(Math.cosh(ohm*t)+gamma*Math.sinh(ohm*t)/ohm);
+  } else {
+    x = Math.exp(-gamma*t)*x0*(1+gamma*t);
+  }
+  t += 0.02;
+  draw();
+  if (run) window.setTimeout(loop, 20);
+}
+function draw() {
+  ctx.clearRect(0, 0, 600, 500);
+  ctx.lineCap = "round";
+  ctx.strokeStyle = "black";
+  ctx.beginPath();
+  ctx.moveTo(0, 250);
+  ctx.lineTo(50, 250);
+  var total = 350+10*x;
+  ctx.lineTo(50+0.05*total, 275);
+  for (var i = 2; i <= 9; i++) {
+    if (i&1) {
+      ctx.lineTo(50-0.05*total+0.1*i*total, 275);
+    } else {
+      ctx.lineTo(50-0.05*total+0.1*i*total, 225);
+    }
+  }
+  ctx.lineTo(50+0.9*total, 250);
+  ctx.lineTo(50+total, 250);
+  ctx.stroke();
+  ctx.fillStyle = "yellow";
+  ctx.beginPath();
+  ctx.arc(400+10*x, 250, 30, 0, 2*Math.PI);
+  ctx.fill();
+}
+function change() {
+  omega = Math.sqrt(k/m);
+  gamma = 0.5*c/m;
+}
+canvas.addEventListener('mousedown', mouseDown, false);
+function mouseDown(e) {
+  e.preventDefault();
+  run = false;
+  btn.value = "start";
+  x0 = (e.pageX-canvas.offsetTop-400)/10;
+  x = x0;
+  canvas.addEventListener('mousemove', mouseMove, false);
+  canvas.addEventListener('mouseup', mouseUp, false);
+  draw();
+}
+function mouseMove(e) {
+  x0 = (e.pageX-canvas.offsetTop-400)/10;
+  x = x0;
+  draw();
+}
+function mouseUp(e) {
+  canvas.removeEventListener('mousemove', mouseMove);
+  canvas.removeEventListener('mouseup', mouseUp);
+  t = 0;
+  button();
+}
+window.onload = init;
+</script>
+</body>
+</html>
