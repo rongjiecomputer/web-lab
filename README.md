@@ -1,5 +1,5 @@
 # Javascript visualiser
-This is a collection of visualisers in javascript.
+This is a collection of graphic visualisations and simulations for mathematics and science, written in JavaScript.
 
 ## Live demo
-<a href="http://rongjiecomputer.github.io/js-visualiser/">http://rongjiecomputer.github.io/js-visualiser/</a>
+<a href="https://rongjiecomputer.github.io/js-visualiser/">https://rongjiecomputer.github.io/js-visualiser/</a>
