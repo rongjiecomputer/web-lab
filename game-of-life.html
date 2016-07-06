@@ -1,53 +1,70 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Game of life</title>
-<meta name="description" content="Game of life simulation in javascript without canvas and svg, by rongjiecomputer" />
+<title>Game of life with html5 canvas</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1"/>
+<meta name="description" content="Game of life simulation implemented with HTML5 canvas"/>
+<link rel="canonical" href="https://rongjiecomputer.github.io/web-lab/game-of-life.html">
 <style>
+p {
+  margin: 0 0 16px 0;
+}
 #board {
   position: relative;
+  width: 500px;
   height: 500px;
-  margin: 8px 8px 8px 8px;
+  background-color: #000;
 }
-#board div {
+#canvas2 {
   position: absolute;
-  width: 10px;
-  height: 10px;
-  border: 1px solid #8AC007;
-}
-.live {
-  background-color: #C1FF86;
-}
-.dead {
-  background-color: #000000;
+  pointer-events: none;
+  top: 0;
 }
 #data {
-  margin: 8px 8px 8px 8px;
+  word-break: break-all;
+}
+@media (max-width: 515px) {
+  #board {
+    width: 300px;
+    height: 300px;
+  }
 }
 </style>
 </head>
 
 <body>
-<h3>Game of Life in javascript</h3>
-<div id="board"></div>
+<h1>Game of Life with html5 canvas</h1>
+<div id="board">
+<canvas id="canvas"></canvas>
+<canvas id="canvas2"></canvas>
+</div>
 <fieldset>
 <legend>Panel</legend>
+<p>
+<label>Control</label>
 <input type="button" onclick="play()" id="btn" value="Play">
 <button onclick="reset()">Reset</button>
-<button onclick="importdata()">Import</button>
-<button onclick="exportdata()">Save</button>
+</p>
+<p>
+<label>Speed</label>
 <select onchange="stop(); interval = parseInt(this.value);">
 <option value="1000">Slow</option>
-<option selected="selected" value="500">Default</option>
-<option value="100">Fast</option>
+<option value="500">Default</option>
+<option selected value="100">Fast</option>
 <option value="50">Hyper</option>
 </select>
-<select onchange="stop(); clearboard(); cells = parseInt(this.value); loadcell();">
-<option selected="selected" value="50">50</value>
-<option value="100">100</value>
+</p>
+<p>
+<label>Cells</label>
+<select onchange="stop(); cells = parseInt(this.value); SIZE = WIDTH / cells; draw(); drawLines();">
+<option selected value="50">50</option>
+<option value="100">100</option>
 </select>
+</p>
+<p>
+<label>Template</label>
 <select onchange="stop(); external(pattern[parseInt(this.value)]);">
-<option selected="selected" value="0">Blank</option>
+<option value="0">Blank</option>
 <option value="1">Still lifes</option>
 <option value="2">Gliders</option>
 <option value="3">Spaceships</option>
@@ -56,78 +73,80 @@
 <option value="6">Diehard</option>
 <option value="7">R-pentomino</option>
 <option value="8">Once-cell thick (infinite)</option>
-<option value="9">Gosper glider gun (infinite)</option>
+<option selected value="9">Gosper glider gun (infinite)</option>
 <option value="10">Space filler (infinite)</option>
 </select>
-<button onclick="leftshift()">&lt;</button>
-<button onclick="rightshift()">&gt;</button>
-<button onclick="upshift()"><div style="transform: rotate(90deg)">&lt;</div></button>
-<button onclick="downshift()"><div style="transform: rotate(90deg)">&gt;</div></button>
+</p>
+<p>
+<label>More</label>
+<button onclick="importdata()">Load</button>
+<button onclick="exportdata()">Save</button>
+</p>
 </fieldset>
 <div id="data"></div>
 
 <script>
-var grid = [];
-for (var i = 0; i <= 101; i++) {
-  grid[i] = [];
-}
-for (var i = 0; i <= 101; i++) {
-  for (var j = 0; j <= 101; j++) {
-    grid[i][j] = 0;
-  }
-}
-var node = [];
-for (var i = 0; i < 100; i++) {
-  node[i] = [];
-}
-var board = document.getElementById('board');
-for (var i = 0; i < 100; i++) {
-  for (var j = 0; j < 100; j++) {
-    node[i][j] = document.createElement("div");
-    node[i][j].className = "dead";
-    node[i][j].style.top = "" + i*10 + "px";
-    node[i][j].style.left = "" + j*10 + "px";
-    node[i][j].onclick = function() { this.className = (this.className == 'live' ? 'dead' : 'live'); };
-  }
-}
+var grid = new Int8Array(105*105);
 var cells = 50;
-function loadcell() {
-  board.style.height = "" + cells*10 + "px";
-  for (var i = 0; i < cells; i++) {
-    for (var j = 0; j < cells; j++) {
-      board.appendChild(node[i][j]);
-    }
-  }
+var SIZE = 10, WIDTH = 500;
+var canvas = document.getElementById("canvas");
+canvas.addEventListener("mousedown", function(e) {
+  if (isRunning) return;
+  var x = Math.floor(e.offsetX / SIZE)+1, y = Math.floor(e.offsetY / SIZE)+1;
+  grid[pos(x, y)] = !grid[pos(x, y)];
+  draw();
+}, false);
+if (window.innerWidth < 516) {
+  SIZE = 6; WIDTH = 300;
 }
-function clearboard() {
-  stop();
-  for (var i = 0; i < cells; i++) {
-    for (var j = 0; j < cells; j++) {
-      board.removeChild(node[i][j]);
-    }
-  }
+canvas.width = WIDTH;
+canvas.height = WIDTH;
+var context = canvas.getContext("2d");
+context.fillStyle = "#C1FF86";
+function pos(x, y) {
+  return 105*x+y;
 }
-loadcell();
+var canvas2 = document.getElementById("canvas2");
+var context2 = canvas2.getContext("2d");
+canvas2.width = WIDTH;
+canvas2.height = WIDTH;
+context2.strokeStyle = "#8AC007";
+function drawLines() {
+  context2.clearRect(0, 0, WIDTH, WIDTH);
+  context2.beginPath();
+  for (var i = 0; i <= cells; i++) {
+    context2.moveTo(0, i*SIZE);
+    context2.lineTo(WIDTH, i*SIZE);
+    context2.moveTo(i*SIZE, 0);
+    context2.lineTo(i*SIZE, WIDTH);
+  }
+  context2.stroke();
+}
+drawLines();
 function main() {
-  for (var i = 0; i < cells; i++) {
-    for (var j = 0; j < cells; j++) {
-      grid[i+1][j+1] = (node[i][j].className == "live");
-    }
-  }
+  var newGrid = new Int8Array(105*105);
   for (var i = 1; i <= cells; i++) {
     for (var j = 1; j <= cells; j++) {
-      var c = grid[i-1][j-1] + grid[i-1][j] + grid[i-1][j+1]
-            + grid[i][j-1] + grid[i][j+1]
-            + grid[i+1][j-1] + grid[i+1][j] + grid[i+1][j+1];
-      if (grid[i][j]) {
-        if (c < 2 || c > 3) node[i-1][j-1].className = "dead";
-      } else {
-        if (c == 3) node[i-1][j-1].className = "live";
+      var c = grid[pos(i-1, j-1)] + grid[pos(i-1, j)] + grid[pos(i-1, j+1)]
+            + grid[pos(i, j-1)] + grid[pos(i, j+1)]
+            + grid[pos(i+1, j-1)] + grid[pos(i+1, j)] + grid[pos(i+1, j+1)];
+      if ((grid[pos(i, j)] && (c == 2 || c == 3)) || (!grid[pos(i, j)] && c == 3)) newGrid[pos(i, j)] = 1;
+    }
+  }
+  grid = newGrid;
+  draw();
+}
+function draw() {
+  context.clearRect(0, 0, WIDTH, WIDTH);
+  for (var i = 1; i <= cells; i++) {
+    for (var j = 1; j <= cells; j++) {
+      if (grid[pos(i, j)]) {
+        context.fillRect(SIZE*(i-1), SIZE*(j-1), SIZE, SIZE);
       }
     }
   }
 }
-var isRunning = false, loop, interval = 500, btn = document.getElementById('btn');
+var isRunning = false, loop, interval = 100, btn = document.getElementById('btn');
 function play() {
   isRunning = !isRunning;
   if (isRunning) {
@@ -142,66 +161,27 @@ function stop() {
   if (isRunning) {
     clearInterval(loop);
     isRunning = false;
+    btn.value = "Play";
   }
 }
 function reset() {
   stop();
-  for (var i = 0; i < cells; i++) {
-    for (var j = 0; j < cells; j++) {
-      node[i][j].className = "dead";
-    }
-  }
-}
-function leftshift() {
-  stop();
-  for (var i = 0; i < cells; i++) {
-    for (var j = 1; j < cells; j++) {
-      node[i][j-1].className = node[i][j].className;
-    }
-    node[i][cells-1].className = "dead";
-  }
-}
-function rightshift() {
-  stop();
-  for (var i = 0; i < cells; i++) {
-    for (var j = cells-2; j >= 0; j--) {
-      node[i][j+1].className = node[i][j].className;
-    }
-    node[i][0].className = "dead";
-  }
-}
-function upshift() {
-  stop();
-  for (var j = 0; j < cells; j++) {
-    for (var i = 1; i < cells; i++) {
-      node[i-1][j].className = node[i][j].className;
-    }
-    node[cells-1][j].className = "dead";
-  }
-}
-function downshift() {
-  stop();
-  for (var j = 0; j < cells; j++) {
-    for (var i = cells-2; i >= 0; i--) {
-      node[i+1][j].className = node[i][j].className;
-    }
-    node[0][j].className = "dead";
-  }
+  context.clearRect(0, 0, WIDTH, WIDTH);
+  grid = new Int8Array(105*105);
 }
 function external(e) {
-  stop();
   reset();
   for (var i = 0; i < e.length;  i += 2) {
-    node[e[i]][e[i+1]].className = "live";
+    grid[pos(e[i], e[i+1])] = 1;
   }
+  draw();
 }
 function importdata() {
   stop();
   var p = prompt("Please paste a previously saved data", "[10, 20, 30, 30]");
-  if (p != null) {
+  if (p) {
     try {
-      var arr = JSON.parse(p);
-      external(arr);
+      external(JSON.parse(p));
     } catch (e) {
       alert("The data is invalid!");
     }
@@ -210,34 +190,30 @@ function importdata() {
 var dt = document.getElementById("data");
 function exportdata() {
   stop();
-  var data = "[";
-  for (var i = 0; i < cells; i++) {
-    for (var j = 0; j < cells; j++) {
-      if (node[i][j].className != "dead") {
-        data += "" + i + ", " + j + ", ";
+  var data = []
+  for (var i = 1; i <= cells; i++) {
+    for (var j = 1; j <= cells; j++) {
+      if (grid[pos(i, j)]) {
+        data.push(i);
+        data.push(j);
       }
     }
   }
-  var trim;
-  if (data.length > 1) {
-    trim = data.slice(0, data.length-2);
-  } else {
-    trim = data;
-  }
-  trim += "]";
-  dt.innerHTML = "<h4>Exported data</h4>" + trim;
+  dt.innerHTML = "<h4>Exported data</h4>" + "[" + data.join(",") + "]";
 }
 var pattern = [[],
-[15, 9, 15, 10, 15, 16, 15, 17, 15, 24, 15, 25, 15, 30, 15, 31, 16, 9, 16, 10, 16, 15, 16, 18, 16, 23, 16, 26, 16, 30, 16, 32, 17, 16, 17, 17, 17, 24, 17, 26, 17, 31, 18, 25],
-[15, 25, 15, 26, 15, 27, 16, 25, 17, 26, 20, 18, 20, 19, 20, 20, 21, 20, 22, 19, 23, 27, 23, 28, 24, 28, 24, 29, 25, 27],
-[12, 4, 12, 7, 13, 8, 14, 4, 14, 8, 15, 5, 15, 6, 15, 7, 15, 8, 21, 6, 22, 4, 22, 8, 23, 9, 24, 4, 24, 9, 25, 5, 25, 6, 25, 7, 25, 8, 25, 9, 30, 6, 30, 7, 31, 4, 31, 9, 32, 10, 33, 4, 33, 10, 34, 5, 34, 6, 34, 7, 34, 8, 34, 9, 34, 10],
-[12, 10, 12, 31, 12, 32, 13, 10, 13, 19, 13, 20, 13, 21, 13, 31, 13, 32, 14, 10, 14, 18, 14, 19, 14, 20, 14, 33, 14, 34, 15, 33, 15, 34, 25, 38, 26, 38, 27, 38, 28, 16, 28, 38, 29, 15, 29, 16, 29, 17, 29, 38, 30, 15, 30, 17, 30, 38, 31, 15, 31, 16, 31, 17, 31, 38, 32, 16, 32, 38, 33, 38, 34, 38],
-[22, 18, 22, 19, 22, 23, 22, 25, 23, 18, 23, 19, 23, 24, 24, 24],
-[25, 20, 26, 14, 26, 15, 27, 15, 27, 19, 27, 20, 27, 21],
-[20, 22, 20, 23, 21, 23, 21, 24, 22, 23],
-[26, 7, 26, 8, 26, 9, 26, 10, 26, 11, 26, 12, 26, 13, 26, 14, 26, 16, 26, 17, 26, 18, 26, 19, 26, 20, 26, 24, 26, 25, 26, 26, 26, 33, 26, 34, 26, 35, 26, 36, 26, 37, 26, 38, 26, 39, 26, 41, 26, 42, 26, 43, 26, 44, 26, 45],
-[16, 32, 17, 30, 17, 32, 18, 20, 18, 21, 18, 28, 18, 29, 18, 42, 18, 43, 19, 19, 19, 23, 19, 28, 19, 29, 19, 42, 19, 43, 20, 8, 20, 9, 20, 18, 20, 24, 20, 28, 20, 29, 21, 8, 21, 9, 21, 18, 21, 22, 21, 24, 21, 25, 21, 30, 21, 32, 22, 18, 22, 24, 22, 32, 23, 19, 23, 23, 24, 20, 24, 21],
-[9, 28, 10, 27, 10, 28, 10, 29, 11, 22, 11, 23, 11, 24, 11, 29, 11, 30, 12, 21, 12, 24, 12, 25, 12, 26, 12, 29, 12, 31, 12, 32, 13, 20, 13, 24, 13, 26, 13, 29, 13, 31, 14, 20, 14, 25, 14, 27, 14, 29, 14, 31, 14, 33, 14, 34, 15, 22, 15, 27, 15, 29, 15, 33, 15, 34, 16, 10, 16, 11, 16, 12, 16, 13, 16, 19, 16, 21, 16, 26, 16, 30, 16, 32, 16, 33, 16, 34, 17, 10, 17, 14, 17, 15, 17, 17, 17, 19, 17, 20, 17, 21, 17, 23, 17, 24, 17, 34, 17, 35, 18, 10, 18, 16, 18, 17, 18, 23, 19, 11, 19, 14, 19, 15, 19, 17, 19, 20, 19, 23, 19, 25, 19, 26, 20, 17, 20, 19, 20, 21, 20, 23, 20, 25, 20, 27, 20, 33, 20, 34, 20, 35, 20, 36, 21, 11, 21, 14, 21, 15, 21, 17, 21, 20, 21, 23, 21, 26, 21, 27, 21, 29, 21, 31, 21, 32, 21, 36, 22, 10, 22, 16, 22, 17, 22, 21, 22, 23, 22, 25, 22, 29, 22, 30, 22, 36, 23, 10, 23, 14, 23, 15, 23, 17, 23, 19, 23, 20, 23, 23, 23, 26, 23, 29, 23, 31, 23, 32, 23, 35, 24, 10, 24, 11, 24, 12, 24, 13, 24, 19, 24, 21, 24, 23, 24, 25, 24, 27, 24, 29, 25, 20, 25, 21, 25, 23, 25, 26, 25, 29, 25, 31, 25, 32, 25, 35, 26, 23, 26, 29, 26, 30, 26, 36, 27, 11, 27, 12, 27, 22, 27, 23, 27, 25, 27, 26, 27, 27, 27, 29, 27, 31, 27, 32, 27, 36, 28, 12, 28, 13, 28, 14, 28, 16, 28, 20, 28, 25, 28, 27, 28, 33, 28, 34, 28, 35, 28, 36, 29, 12, 29, 13, 29, 17, 29, 19, 29, 24, 30, 12, 30, 13, 30, 15, 30, 17, 30, 19, 30, 21, 30, 26, 31, 15, 31, 17, 31, 20, 31, 22, 31, 26, 32, 14, 32, 15, 32, 17, 32, 20, 32, 21, 32, 22, 32, 25, 33, 16, 33, 17, 33, 22, 33, 23, 33, 24, 34, 17, 34, 18, 34, 19, 35, 18]];
+[10,16,10,17,11,16,11,17,16,17,17,16,17,18,18,16,18,18,19,17,24,17,25,16,25,18,26,16,26,19,27,17,27,18,31,16,31,17,32,16,32,18,33,17],
+[19,21,20,21,20,23,21,21,21,22,26,16,26,17,27,16,27,18,28,16,28,24,28,26,29,24,29,25,30,25],
+[5,13,5,15,5,23,5,25,5,32,5,34,6,16,6,26,6,35,7,16,7,22,7,26,7,31,7,35,8,13,8,16,8,26,8,31,8,35,9,14,9,15,9,16,9,23,9,26,9,35,10,24,10,25,10,26,10,32,10,35,11,33,11,34,11,35],
+[11,13,11,14,11,15,15,28,15,29,15,33,15,34,16,27,16,30,16,32,16,35,17,26,17,30,17,32,17,36,18,27,18,30,18,32,18,35,19,15,19,28,19,29,19,33,19,34,20,14,20,15,21,14,21,15,22,14,32,13,32,14,33,13,33,14,34,15,34,16,35,15,35,16,37,26,37,27,37,34,37,35,38,24,38,29,38,32,38,37,39,24,39,29,39,32,39,37,40,24,40,29,40,32,40,37,41,26,41,27,41,34,41,35],
+[19,23,19,24,20,23,20,24,24,23,25,24,25,25,26,23],
+[15,27,16,27,16,28,20,28,21,26,21,28,22,28],
+[23,21,24,21,24,22,24,23,25,22],
+[8,27,9,27,10,27,11,27,12,27,13,27,14,27,15,27,17,27,18,27,19,27,20,27,21,27,25,27,26,27,27,27,34,27,35,27,36,27,37,27,38,27,39,27,40,27,42,27,43,27,44,27,45,27,46,27],
+[9,21,9,22,10,21,10,22,19,21,19,22,19,23,20,20,20,24,21,19,21,25,22,19,22,25,23,22,24,20,24,24,25,21,25,22,25,23,26,22,29,19,29,20,29,21,30,19,30,20,30,21,31,18,31,22,33,17,33,18,33,22,33,23,43,19,43,20,44,19,44,20],
+[11,17,11,18,11,19,11,23,11,24,11,25,12,17,12,20,12,22,12,25,12,28,13,17,13,25,13,28,13,29,13,30,13,31,14,17,14,25,14,29,14,30,14,31,15,18,15,20,15,22,15,24,15,29,15,33,16,18,16,20,16,22,16,24,16,31,16,32,16,33,17,19,17,23,17,29,17,34,18,18,18,19,18,20,18,21,18,22,18,23,18,24,18,30,18,31,18,32,18,33,18,34,18,35,19,35,19,36,20,17,20,18,20,21,20,24,20,25,20,30,20,31,20,35,21,14,21,15,21,18,21,20,21,22,21,24,21,26,21,29,21,32,21,33,22,13,22,17,22,18,22,21,22,23,22,25,22,26,22,31,22,33,23,12,23,16,23,28,23,32,23,33,23,34,24,12,24,18,24,19,24,20,24,21,24,22,24,23,24,24,24,25,24,26,24,27,24,28,24,34,25,12,25,13,25,14,25,18,25,30,25,34,26,13,26,15,26,20,26,21,26,23,26,25,26,28,26,29,26,33,27,13,27,14,27,17,27,20,27,22,27,24,27,26,27,28,27,31,27,32,28,11,28,15,28,16,28,21,28,22,28,25,28,28,28,29,29,10,29,11,30,11,30,12,30,13,30,14,30,15,30,16,30,22,30,23,30,24,30,25,30,26,30,27,30,28,31,12,31,17,31,23,31,27,32,13,32,14,32,15,32,22,32,24,32,26,32,28,33,13,33,17,33,22,33,24,33,26,33,28,34,15,34,16,34,17,34,21,34,29,35,15,35,16,35,17,35,18,35,21,35,29,36,18,36,21,36,24,36,26,36,29,37,21,37,22,37,23,37,27,37,28,37,29]];
+external(pattern[9]);
+play();
 </script>
 </body>
 

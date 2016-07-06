@@ -1,60 +1,71 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Wireworld</title>
-<meta name="description" content="Wireworld simulation in javascript without canvas and svg, by rongjiecomputer" />
+<title>Wireworld with html5 canvas</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1"/>
+<meta name="description" content="Wireworld simulation implemented with HTML5 canvas"/>
+<link rel="canonical" href="https://rongjiecomputer.github.io/web-lab/wireworld.html">
 <style>
+p {
+  margin: 0 0 16px 0;
+}
 #board {
   position: relative;
+  width: 500px;
   height: 500px;
-  margin: 8px 8px 8px 8px;
+  background-color: #000;
 }
-#board div {
+#canvas2 {
   position: absolute;
-  width: 10px;
-  height: 10px;
-  border: 1px solid #929292;
-}
-#board div.conductor {
-  background-color: yellow;
-}
-#board div.head {
-  background-color: blue;
-}
-#board div.tail {
-  background-color: red;
-}
-#board div.empty {
-  background-color: black;
+  pointer-events: none;
+  top: 0;
 }
 #data {
-  margin: 8px 8px 8px 8px;
+  word-break: break-all;
+}
+@media (max-width: 515px) {
+  #board {
+    width: 300px;
+    height: 300px;
+  }
 }
 </style>
 </head>
 
 <body>
-<h3>Wireworld in javascript</h3>
-<div id="board"></div>
+<h1>Wireworld with html5 canvas</h1>
+<div id="board">
+<canvas id="canvas"></canvas>
+<canvas id="canvas2"></canvas>
+</div>
 <fieldset>
 <legend>Panel</legend>
+<p>
+<label>Control</label>
 <input type="button" onclick="play()" value="Play" id="btn">
 <button onclick="reset()">Reset</button>
-<button onclick="importdata()">Import</button>
-<button onclick="exportdata()">Save</button>
+</p>
+<p>
+<label>Speed</label>
 <select onchange="stop(); interval = parseInt(this.value);">
 <option value="1000">Slow</option>
-<option selected="selected" value="500">Default</option>
-<option value="100">Fast</option>
+<option value="500">Default</option>
+<option selected value="100">Fast</option>
 <option value="50">Hyper</option>
 </select>
-<select onchange="stop(); clearboard(); cells = parseInt(this.value); loadcell();">
-<option selected="selected" value="50">50</value>
-<option value="100">100</value>
+</p>
+<p>
+<label>Cells</label>
+<select onchange="stop(); cells = parseInt(this.value); SIZE = WIDTH / cells; draw(); drawLines();">
+<option selected value="50">50</option>
+<option value="100">100</option>
 </select>
+</p>
+<p>
+<label>Template</label>
 <select onchange="stop(); external(pattern[parseInt(this.value)]);">
-<option selected="selected" value="0">Blank</option>
-<option value="1">Diode</option>
+<option value="0">Blank</option>
+<option selected value="1">Diode</option>
 <option value="2">XOR-gate</option>
 <option value="3">OR-gate</option>
 <option value="4">NAND-gate 1</option>
@@ -64,79 +75,98 @@
 <option value="8">Complete circuit 1</option>
 <option value="9">Binary adder n=6</option>
 </select>
-<button onclick="leftshift()">&lt;</button>
-<button onclick="rightshift()">&gt;</button>
-<button onclick="upshift()"><div style="transform: rotate(90deg)">&lt;</div></button>
-<button onclick="downshift()"><div style="transform: rotate(90deg)">&gt;</div></button>
+</p>
+<p>
+<label>More</label>
+<button onclick="importdata()">Import</button>
+<button onclick="exportdata()">Save</button>
+</p>
 </fieldset>
 <div id="data"></div>
 
 <script>
-var grid = [];
-for (var i = 0; i <= 101; i++) {
-  grid[i] = [];
-}
-for (var i = 0; i <= 101; i++) {
-  for (var j = 0; j <= 101; j++) {
-    grid[i][j] = 0;
-  }
-}
-var node = [];
-for (var i = 0; i < 100; i++) {
-  node[i] = [];
-}
-var board = document.getElementById('board');
-for (var i = 0; i < 100; i++) {
-  for (var j = 0; j < 100; j++) {
-    node[i][j] = document.createElement("div");
-    node[i][j].className = "empty";
-    node[i][j].style.top = "" + i*10 + "px";
-    node[i][j].style.left = "" + j*10 + "px";
-    node[i][j].onclick = function() {
-      this.className = (this.className == 'empty' ? 'conductor' : this.className == 'conductor' ? 'head' : this.className == 'head' ? 'tail' : 'empty'); 
-    };
-  }
-}
+var grid = new Int8Array(105*105);
 var cells = 50;
-function loadcell() {
-  board.style.height = "" + cells*10 + "px";
-  for (var i = 0; i < cells; i++) {
-    for (var j = 0; j < cells; j++) {
-      board.appendChild(node[i][j]);
-    }
-  }
+var SIZE = 10, WIDTH = 500;
+var canvas = document.getElementById("canvas");
+canvas.addEventListener("mousedown", function(e) {
+  if (isRunning) return;
+  var x = Math.floor(e.offsetX / SIZE)+1, y = Math.floor(e.offsetY / SIZE)+1;
+  grid[pos(x, y)] = (grid[pos(x, y)] + 1) % 4;
+  draw();
+}, false);
+if (window.innerWidth < 516) {
+  SIZE = 6; WIDTH = 300;
 }
-function clearboard() {
-  stop();
-  for (var i = 0; i < cells; i++) {
-    for (var j = 0; j < cells; j++) {
-      board.removeChild(node[i][j]);
-    }
-  }
+canvas.width = WIDTH;
+canvas.height = WIDTH;
+var context = canvas.getContext("2d");
+context.fillStyle = "#C1FF86";
+function pos(x, y) {
+  return 105*x+y;
 }
-loadcell();
+var canvas2 = document.getElementById("canvas2");
+var context2 = canvas2.getContext("2d");
+canvas2.width = WIDTH;
+canvas2.height = WIDTH;
+context2.strokeStyle = "#929292";
+function drawLines() {
+  context2.clearRect(0, 0, WIDTH, WIDTH);
+  context2.beginPath();
+  for (var i = 0; i <= cells; i++) {
+    context2.moveTo(0, i*SIZE);
+    context2.lineTo(WIDTH, i*SIZE);
+    context2.moveTo(i*SIZE, 0);
+    context2.lineTo(i*SIZE, WIDTH);
+  }
+  context2.stroke();
+}
+drawLines();
 function main() {
-  for (var i = 0; i < cells; i++) {
-    for (var j = 0; j < cells; j++) {
-      grid[i+1][j+1] = (node[i][j].className == "empty" ? 0 : node[i][j].className == "head" ? 1 : node[i][j].className == "tail" ? 2 : 3);
-    }
-  }
+  var newGrid = new Int8Array(105*105);
   for (var i = 1; i <= cells; i++) {
     for (var j = 1; j <= cells; j++) {
-      if (grid[i][j] == 1) {
-        node[i-1][j-1].className = "tail";
-      } else if (grid[i][j] == 2) {
-        node[i-1][j-1].className = "conductor";
-      } else if (grid[i][j] == 3) {
-        var c = (grid[i-1][j-1] == 1) + (grid[i-1][j] == 1) + (grid[i-1][j+1] == 1)
-              + (grid[i][j-1] == 1) + (grid[i][j+1] == 1) + (grid[i+1][j-1] == 1)
-              + (grid[i+1][j] == 1) + (grid[i+1][j+1] == 1);
-        if (c == 1 || c == 2) node[i-1][j-1].className = "head";
+      switch (grid[pos(i, j)]) {
+        case 1:
+          var c = (grid[pos(i-1, j-1)] == 2) + (grid[pos(i-1, j)] == 2) + (grid[pos(i-1, j+1)] == 2)
+              + (grid[pos(i, j-1)] == 2) + (grid[pos(i, j+1)] == 2) + (grid[pos(i+1, j-1)] == 2)
+              + (grid[pos(i+1, j)] == 2) + (grid[pos(i+1, j+1)] == 2);
+          if (c == 1 || c == 2) newGrid[pos(i, j)] = 2;
+          else newGrid[pos(i, j)] = 1;
+          break;
+        case 2:
+          newGrid[pos(i, j)] = 3;
+          break;
+        case 3:
+          newGrid[pos(i, j)] = 1;
+        default:
+      }
+    }
+  }
+  grid = newGrid;
+  draw();
+}
+function draw() {
+  context.clearRect(0, 0, WIDTH, WIDTH);
+  for (var i = 1; i <= cells; i++) {
+    for (var j = 1; j <= cells; j++) {
+      if (grid[pos(i, j)]) {
+        switch (grid[pos(i, j)]) {
+          case 1:
+            context.fillStyle = "yellow";
+            break;
+          case 2:
+            context.fillStyle = "blue";
+            break;
+          case 3:
+            context.fillStyle = "red";
+        } 
+        context.fillRect(SIZE*(i-1), SIZE*(j-1), SIZE, SIZE);
       }
     }
   }
 }
-var isRunning = false, loop, interval = 500, btn = document.getElementById('btn');
+var isRunning = false, loop, interval = 100, btn = document.getElementById('btn');
 function play() {
   isRunning = !isRunning;
   if (isRunning) {
@@ -156,61 +186,22 @@ function stop() {
 }
 function reset() {
   stop();
-  for (var i = 0; i < cells; i++) {
-    for (var j = 0; j < cells; j++) {
-      node[i][j].className = "empty";
-    }
-  }
-}
-function leftshift() {
-  stop();
-  for (var i = 0; i < cells; i++) {
-    for (var j = 1; j < cells; j++) {
-      node[i][j-1].className = node[i][j].className;
-    }
-    node[i][cells-1].className = "empty";
-  }
-}
-function rightshift() {
-  stop();
-  for (var i = 0; i < cells; i++) {
-    for (var j = cells-2; j >= 0; j--) {
-      node[i][j+1].className = node[i][j].className;
-    }
-    node[i][0].className = "empty";
-  }
-}
-function upshift() {
-  stop();
-  for (var j = 0; j < cells; j++) {
-    for (var i = 1; i < cells; i++) {
-      node[i-1][j].className = node[i][j].className;
-    }
-    node[cells-1][j].className = "empty";
-  }
-}
-function downshift() {
-  stop();
-  for (var j = 0; j < cells; j++) {
-    for (var i = cells-2; i >= 0; i--) {
-      node[i+1][j].className = node[i][j].className;
-    }
-    node[0][j].className = "empty";
-  }
+  context.clearRect(0, 0, WIDTH, WIDTH);
+  grid = new Int8Array(105*105);
 }
 function external(e) {
   reset();
   for (var i = 0; i < e.length;  i += 3) {
-    node[e[i]][e[i+1]].className = e[i+2];
+    grid[pos(e[i], e[i+1])] = e[i+2];
   }
+  draw();
 }
 function importdata() {
   stop();
-  var p = prompt("Please paste a previously saved data", "[10, 20, \"conductor\"]");
-  if (p != null) {
+  var p = prompt("Please paste a previously saved data", "[10, 20, 1]");
+  if (p) {
     try {
-      var arr = JSON.parse(p);
-      external(arr);
+      external(JSON.parse(p));
     } catch (e) {
       alert("The data is invalid!");
     }
@@ -219,33 +210,30 @@ function importdata() {
 var dt = document.getElementById("data");
 function exportdata() {
   stop();
-  var data = "[";
-  for (var i = 0; i < cells; i++) {
-    for (var j = 0; j < cells; j++) {
-      if (node[i][j].className != "empty") {
-        data += "" + i + ", " + j + ", \"" + node[i][j].className + "\", ";
+  var data = [];
+  for (var i = 1; i <= cells; i++) {
+    for (var j = 1; j <= cells; j++) {
+      if (grid[pos(i, j)]) {
+        data.push(i);
+        data.push(j);
+        data.push(grid[pos(i, j)]);
       }
     }
   }
-  var trim;
-  if (data.length > 1) {
-    trim = data.slice(0, data.length-2);
-  } else {
-    trim = data;
-  }
-  trim += "]";
-  dt.innerHTML = "<h4>Exported data</h4>" + trim;
+  dt.innerHTML = "<h4>Exported data</h4>" + "[" + data.join(",") + "]";
 }
 var pattern = [[],
-[11, 6, "conductor", 11, 7, "conductor", 11, 8, "conductor", 11, 9, "conductor", 11, 10, "conductor", 11, 19, "conductor", 11, 20, "conductor", 12, 5, "conductor", 12, 11, "conductor", 12, 12, "conductor", 12, 13, "conductor", 12, 14, "conductor", 12, 15, "conductor", 12, 16, "conductor", 12, 17, "conductor", 12, 18, "conductor", 12, 19, "conductor", 12, 21, "conductor", 12, 22, "conductor", 12, 23, "conductor", 12, 24, "conductor", 12, 25, "conductor", 12, 26, "conductor", 12, 27, "conductor", 12, 28, "conductor", 12, 29, "conductor", 13, 6, "head", 13, 7, "tail", 13, 8, "conductor", 13, 9, "conductor", 13, 10, "conductor", 13, 19, "conductor", 13, 20, "conductor", 18, 6, "conductor", 18, 7, "conductor", 18, 8, "conductor", 18, 9, "conductor", 18, 10, "conductor", 18, 19, "conductor", 18, 20, "conductor", 19, 5, "conductor", 19, 11, "conductor", 19, 12, "conductor", 19, 13, "conductor", 19, 14, "conductor", 19, 15, "conductor", 19, 16, "conductor", 19, 17, "conductor", 19, 18, "conductor", 19, 20, "conductor", 19, 21, "conductor", 19, 22, "conductor", 19, 23, "conductor", 19, 24, "conductor", 19, 25, "conductor", 19, 26, "conductor", 19, 27, "conductor", 19, 28, "conductor", 19, 29, "conductor", 20, 6, "head", 20, 7, "tail", 20, 8, "conductor", 20, 9, "conductor", 20, 10, "conductor", 20, 19, "conductor", 20, 20, "conductor"],
-[17, 23, "conductor", 17, 24, "conductor", 17, 25, "conductor", 17, 26, "conductor", 17, 27, "conductor", 17, 28, "conductor", 17, 29, "conductor", 17, 30, "conductor", 17, 31, "conductor", 18, 22, "conductor", 18, 32, "conductor", 19, 21, "conductor", 19, 22, "conductor", 19, 23, "conductor", 19, 24, "conductor", 19, 33, "conductor", 20, 21, "conductor", 20, 24, "conductor", 20, 25, "conductor", 20, 26, "conductor", 20, 27, "conductor", 20, 28, "conductor", 20, 29, "conductor", 20, 30, "conductor", 20, 31, "conductor", 20, 32, "conductor", 21, 21, "conductor", 21, 22, "conductor", 21, 23, "conductor", 21, 24, "conductor", 22, 22, "conductor", 23, 11, "conductor", 23, 12, "conductor", 23, 13, "conductor", 23, 14, "conductor", 23, 15, "conductor", 23, 16, "conductor", 23, 17, "conductor", 23, 18, "conductor", 23, 19, "conductor", 23, 20, "conductor", 23, 22, "conductor", 24, 10, "tail", 24, 21, "conductor", 25, 11, "head", 25, 12, "conductor", 25, 13, "conductor", 25, 14, "conductor", 25, 15, "conductor", 25, 16, "conductor", 25, 17, "conductor", 25, 18, "conductor", 25, 19, "conductor", 25, 20, "conductor"],
-[15, 8, "conductor", 15, 9, "conductor", 15, 10, "tail", 15, 11, "head", 15, 12, "conductor", 15, 13, "conductor", 16, 7, "head", 16, 14, "conductor", 16, 15, "conductor", 16, 16, "conductor", 16, 17, "conductor", 16, 18, "conductor", 16, 19, "conductor", 16, 20, "conductor", 16, 21, "conductor", 16, 22, "conductor", 17, 8, "tail", 17, 9, "conductor", 17, 10, "conductor", 17, 11, "conductor", 17, 12, "conductor", 17, 13, "conductor", 17, 23, "conductor", 18, 22, "conductor", 18, 23, "conductor", 18, 24, "conductor", 18, 25, "conductor", 18, 26, "conductor", 18, 27, "conductor", 18, 28, "conductor", 18, 29, "conductor", 18, 30, "conductor", 18, 31, "conductor", 18, 32, "conductor", 19, 8, "conductor", 19, 9, "conductor", 19, 10, "conductor", 19, 11, "conductor", 19, 12, "conductor", 19, 13, "conductor", 19, 23, "conductor", 20, 7, "head", 20, 14, "tail", 20, 15, "head", 20, 16, "conductor", 20, 17, "conductor", 20, 18, "conductor", 20, 19, "conductor", 20, 20, "conductor", 20, 21, "conductor", 20, 22, "conductor", 21, 8, "tail", 21, 9, "conductor", 21, 10, "conductor", 21, 11, "conductor", 21, 12, "conductor", 21, 13, "head"],
-[11, 8, "conductor", 11, 9, "conductor", 11, 10, "tail", 11, 11, "head", 11, 12, "conductor", 11, 13, "conductor", 12, 7, "head", 12, 14, "conductor", 12, 15, "conductor", 12, 16, "conductor", 12, 17, "conductor", 12, 18, "conductor", 12, 19, "conductor", 12, 20, "conductor", 12, 21, "conductor", 13, 8, "tail", 13, 9, "conductor", 13, 10, "conductor", 13, 11, "conductor", 13, 12, "conductor", 13, 13, "conductor", 13, 22, "conductor", 14, 21, "conductor", 14, 22, "conductor", 14, 23, "conductor", 15, 22, "conductor", 16, 21, "conductor", 16, 23, "conductor", 16, 24, "conductor", 16, 25, "conductor", 16, 26, "conductor", 16, 27, "conductor", 16, 28, "conductor", 16, 29, "conductor", 16, 30, "conductor", 16, 31, "conductor", 16, 32, "conductor", 17, 8, "conductor", 17, 9, "conductor", 17, 10, "conductor", 17, 11, "conductor", 17, 12, "conductor", 17, 13, "conductor", 17, 20, "conductor", 18, 7, "head", 18, 14, "conductor", 18, 15, "conductor", 18, 16, "conductor", 18, 17, "conductor", 18, 18, "conductor", 18, 19, "conductor", 19, 8, "tail", 19, 9, "conductor", 19, 10, "conductor", 19, 11, "head", 19, 12, "tail", 19, 13, "conductor"],
-[11, 7, "conductor", 11, 8, "conductor", 11, 9, "conductor", 11, 10, "conductor", 11, 11, "tail", 11, 12, "head", 11, 13, "conductor", 11, 14, "conductor", 12, 6, "head", 12, 15, "conductor", 12, 16, "conductor", 12, 17, "conductor", 12, 18, "conductor", 12, 19, "conductor", 12, 20, "conductor", 12, 21, "conductor", 12, 22, "conductor", 12, 23, "conductor", 12, 24, "conductor", 13, 7, "tail", 13, 8, "conductor", 13, 9, "conductor", 13, 10, "conductor", 13, 11, "conductor", 13, 12, "conductor", 13, 13, "conductor", 13, 14, "conductor", 13, 25, "conductor", 13, 27, "conductor", 14, 24, "conductor", 14, 25, "conductor", 14, 26, "conductor", 14, 27, "conductor", 14, 28, "conductor", 14, 29, "conductor", 14, 30, "conductor", 14, 31, "conductor", 14, 32, "conductor", 14, 33, "conductor", 14, 34, "conductor", 14, 35, "conductor", 15, 24, "conductor", 15, 27, "conductor", 16, 24, "conductor", 16, 25, "conductor", 16, 26, "conductor", 16, 27, "conductor", 16, 28, "conductor", 16, 29, "conductor", 16, 30, "conductor", 16, 31, "conductor", 16, 32, "conductor", 16, 33, "conductor", 16, 34, "conductor", 16, 35, "conductor", 17, 7, "conductor", 17, 8, "conductor", 17, 9, "conductor", 17, 10, "conductor", 17, 11, "conductor", 17, 12, "conductor", 17, 13, "conductor", 17, 14, "conductor", 17, 25, "conductor", 18, 6, "head", 18, 15, "conductor", 18, 16, "conductor", 18, 17, "conductor", 18, 18, "conductor", 18, 19, "conductor", 18, 20, "conductor", 18, 21, "conductor", 18, 22, "conductor", 18, 23, "conductor", 18, 24, "conductor", 19, 7, "tail", 19, 8, "conductor", 19, 9, "conductor", 19, 10, "conductor", 19, 11, "conductor", 19, 12, "head", 19, 13, "tail", 19, 14, "conductor"],
-[12, 9, "conductor", 12, 10, "conductor", 12, 11, "conductor", 12, 12, "conductor", 12, 13, "tail", 12, 14, "head", 12, 15, "conductor", 12, 16, "conductor", 13, 8, "head", 13, 17, "conductor", 13, 18, "conductor", 13, 19, "conductor", 13, 20, "conductor", 13, 21, "conductor", 13, 22, "conductor", 13, 23, "conductor", 13, 24, "conductor", 13, 25, "conductor", 13, 26, "conductor", 14, 9, "tail", 14, 10, "conductor", 14, 11, "conductor", 14, 12, "conductor", 14, 13, "conductor", 14, 14, "conductor", 14, 15, "conductor", 14, 16, "conductor", 14, 27, "conductor", 15, 26, "conductor", 15, 27, "conductor", 15, 28, "conductor", 16, 27, "conductor", 17, 26, "conductor", 17, 27, "conductor", 18, 26, "conductor", 18, 28, "conductor", 18, 29, "conductor", 18, 30, "conductor", 18, 31, "conductor", 18, 32, "conductor", 18, 33, "conductor", 18, 34, "conductor", 18, 35, "conductor", 18, 36, "conductor", 18, 37, "conductor", 19, 26, "conductor", 19, 28, "conductor", 20, 25, "conductor", 20, 26, "conductor", 20, 27, "conductor", 21, 9, "conductor", 21, 10, "conductor", 21, 11, "conductor", 21, 12, "conductor", 21, 13, "conductor", 21, 14, "conductor", 21, 15, "conductor", 21, 16, "conductor", 21, 26, "conductor", 22, 8, "head", 22, 17, "conductor", 22, 18, "conductor", 22, 19, "conductor", 22, 20, "conductor", 22, 21, "conductor", 22, 22, "conductor", 22, 23, "conductor", 22, 24, "conductor", 22, 25, "conductor", 23, 9, "tail", 23, 10, "conductor", 23, 11, "conductor", 23, 12, "conductor", 23, 13, "conductor", 23, 14, "head", 23, 15, "tail", 23, 16, "conductor"],
-[11, 11, "conductor", 11, 16, "conductor", 11, 29, "conductor", 11, 30, "conductor", 11, 31, "conductor", 11, 32, "conductor", 11, 33, "conductor", 11, 34, "conductor", 12, 2, "conductor", 12, 3, "conductor", 12, 4, "conductor", 12, 5, "conductor", 12, 6, "tail", 12, 7, "head", 12, 8, "conductor", 12, 9, "conductor", 12, 28, "conductor", 12, 35, "conductor", 13, 1, "head", 13, 10, "conductor", 13, 11, "conductor", 13, 12, "conductor", 13, 13, "conductor", 13, 14, "conductor", 13, 15, "conductor", 13, 16, "conductor", 13, 17, "conductor", 13, 18, "conductor", 13, 24, "conductor", 13, 25, "conductor", 13, 26, "conductor", 13, 27, "conductor", 13, 30, "conductor", 13, 31, "conductor", 13, 34, "conductor", 13, 35, "conductor", 13, 36, "conductor", 13, 37, "conductor", 14, 2, "tail", 14, 3, "conductor", 14, 4, "conductor", 14, 5, "conductor", 14, 6, "conductor", 14, 7, "conductor", 14, 8, "conductor", 14, 9, "conductor", 14, 19, "conductor", 14, 23, "conductor", 14, 29, "conductor", 14, 32, "conductor", 14, 34, "conductor", 14, 37, "conductor", 14, 38, "conductor", 14, 39, "conductor", 14, 40, "conductor", 14, 41, "conductor", 14, 42, "conductor", 14, 43, "conductor", 14, 44, "conductor", 14, 45, "conductor", 14, 46, "conductor", 14, 47, "conductor", 14, 48, "conductor", 15, 18, "conductor", 15, 19, "conductor", 15, 20, "conductor", 15, 21, "conductor", 15, 23, "conductor", 15, 27, "conductor", 15, 29, "conductor", 15, 30, "conductor", 15, 31, "conductor", 15, 34, "conductor", 15, 35, "conductor", 15, 36, "conductor", 15, 37, "conductor", 16, 18, "conductor", 16, 21, "conductor", 16, 22, "conductor", 16, 24, "conductor", 16, 25, "conductor", 16, 26, "conductor", 16, 27, "conductor", 16, 28, "conductor", 16, 35, "conductor", 17, 18, "conductor", 17, 19, "conductor", 17, 20, "conductor", 17, 21, "conductor", 17, 23, "conductor", 17, 27, "conductor", 17, 29, "conductor", 17, 31, "conductor", 17, 34, "conductor", 18, 2, "conductor", 18, 3, "conductor", 18, 4, "conductor", 18, 5, "conductor", 18, 6, "conductor", 18, 7, "conductor", 18, 8, "conductor", 18, 9, "conductor", 18, 19, "conductor", 18, 23, "conductor", 18, 29, "conductor", 18, 33, "conductor", 19, 1, "head", 19, 10, "conductor", 19, 11, "conductor", 19, 12, "conductor", 19, 13, "conductor", 19, 14, "conductor", 19, 15, "conductor", 19, 16, "conductor", 19, 17, "conductor", 19, 18, "conductor", 19, 19, "conductor", 19, 22, "conductor", 19, 23, "conductor", 19, 24, "conductor", 19, 28, "conductor", 19, 29, "conductor", 19, 30, "conductor", 19, 32, "conductor", 20, 2, "tail", 20, 3, "conductor", 20, 4, "conductor", 20, 5, "conductor", 20, 6, "conductor", 20, 7, "head", 20, 8, "tail", 20, 9, "conductor", 20, 20, "conductor", 20, 23, "conductor", 20, 29, "conductor", 20, 32, "conductor", 21, 11, "conductor", 21, 16, "conductor", 21, 20, "conductor", 21, 22, "conductor", 21, 24, "conductor", 21, 28, "conductor", 21, 30, "conductor", 21, 31, "conductor", 22, 20, "conductor", 22, 22, "conductor", 22, 24, "conductor", 22, 28, "conductor", 22, 30, "conductor", 23, 21, "conductor", 23, 24, "conductor", 23, 27, "conductor", 23, 28, "conductor", 23, 29, "conductor", 24, 24, "conductor", 24, 28, "conductor", 25, 25, "conductor", 25, 26, "conductor", 25, 27, "conductor"],
-[8, 10, "conductor", 8, 11, "conductor", 8, 12, "conductor", 8, 13, "conductor", 8, 14, "conductor", 8, 15, "conductor", 8, 16, "conductor", 8, 18, "conductor", 8, 19, "conductor", 8, 20, "conductor", 8, 24, "conductor", 8, 25, "conductor", 8, 26, "conductor", 8, 28, "conductor", 8, 29, "conductor", 8, 30, "conductor", 8, 34, "conductor", 8, 35, "conductor", 8, 36, "conductor", 8, 38, "conductor", 8, 39, "conductor", 8, 40, "conductor", 8, 44, "conductor", 8, 45, "conductor", 8, 46, "conductor", 8, 48, "conductor", 8, 49, "conductor", 8, 50, "conductor", 8, 54, "conductor", 8, 55, "conductor", 8, 56, "conductor", 8, 58, "conductor", 8, 59, "conductor", 8, 60, "conductor", 8, 61, "conductor", 8, 62, "conductor", 8, 63, "conductor", 9, 9, "conductor", 9, 17, "conductor", 9, 21, "conductor", 9, 23, "conductor", 9, 27, "conductor", 9, 31, "conductor", 9, 33, "conductor", 9, 37, "conductor", 9, 41, "conductor", 9, 43, "conductor", 9, 47, "conductor", 9, 51, "conductor", 9, 53, "conductor", 9, 57, "conductor", 9, 64, "conductor", 10, 8, "conductor", 10, 17, "conductor", 10, 21, "conductor", 10, 23, "conductor", 10, 27, "conductor", 10, 31, "conductor", 10, 33, "conductor", 10, 37, "conductor", 10, 41, "conductor", 10, 43, "conductor", 10, 47, "conductor", 10, 51, "conductor", 10, 53, "conductor", 10, 57, "conductor", 10, 64, "conductor", 11, 7, "conductor", 11, 16, "conductor", 11, 17, "conductor", 11, 18, "conductor", 11, 22, "conductor", 11, 26, "conductor", 11, 27, "conductor", 11, 28, "conductor", 11, 32, "conductor", 11, 36, "conductor", 11, 37, "conductor", 11, 38, "conductor", 11, 42, "conductor", 11, 46, "conductor", 11, 47, "conductor", 11, 48, "conductor", 11, 52, "conductor", 11, 56, "conductor", 11, 57, "conductor", 11, 58, "conductor", 11, 64, "conductor", 12, 7, "conductor", 12, 17, "conductor", 12, 27, "conductor", 12, 37, "conductor", 12, 47, "conductor", 12, 57, "conductor", 12, 64, "conductor", 13, 7, "conductor", 13, 16, "conductor", 13, 18, "conductor", 13, 26, "conductor", 13, 28, "conductor", 13, 36, "conductor", 13, 38, "conductor", 13, 46, "conductor", 13, 48, "conductor", 13, 56, "conductor", 13, 58, "conductor", 13, 64, "conductor", 14, 7, "conductor", 14, 16, "head", 14, 18, "conductor", 14, 26, "head", 14, 28, "conductor", 14, 36, "head", 14, 38, "conductor", 14, 46, "head", 14, 48, "conductor", 14, 56, "head", 14, 58, "conductor", 14, 64, "conductor", 15, 7, "conductor", 15, 10, "conductor", 15, 12, "conductor", 15, 13, "conductor", 15, 14, "conductor", 15, 15, "conductor", 15, 16, "head", 15, 17, "tail", 15, 19, "tail", 15, 20, "head", 15, 21, "conductor", 15, 22, "conductor", 15, 23, "conductor", 15, 24, "conductor", 15, 25, "tail", 15, 26, "head", 15, 27, "tail", 15, 29, "tail", 15, 30, "head", 15, 31, "conductor", 15, 32, "conductor", 15, 33, "conductor", 15, 34, "conductor", 15, 35, "tail", 15, 36, "head", 15, 37, "tail", 15, 39, "tail", 15, 40, "head", 15, 41, "conductor", 15, 42, "conductor", 15, 43, "conductor", 15, 44, "conductor", 15, 45, "tail", 15, 46, "head", 15, 47, "tail", 15, 49, "tail", 15, 50, "head", 15, 51, "conductor", 15, 52, "conductor", 15, 53, "conductor", 15, 54, "conductor", 15, 55, "tail", 15, 56, "head", 15, 57, "tail", 15, 59, "tail", 15, 60, "head", 15, 61, "conductor", 15, 64, "conductor", 16, 7, "conductor", 16, 9, "conductor", 16, 11, "conductor", 16, 16, "head", 16, 26, "head", 16, 36, "head", 16, 46, "head", 16, 56, "head", 16, 62, "conductor", 16, 64, "conductor", 17, 7, "conductor", 17, 9, "conductor", 17, 11, "conductor", 17, 61, "conductor", 17, 64, "conductor", 18, 7, "conductor", 18, 9, "conductor", 18, 11, "conductor", 18, 18, "head", 18, 19, "tail", 18, 20, "conductor", 18, 24, "conductor", 18, 25, "conductor", 18, 26, "conductor", 18, 28, "head", 18, 29, "tail", 18, 30, "conductor", 18, 34, "conductor", 18, 35, "conductor", 18, 36, "conductor", 18, 38, "head", 18, 39, "tail", 18, 40, "conductor", 18, 44, "conductor", 18, 45, "conductor", 18, 46, "conductor", 18, 48, "head", 18, 49, "tail", 18, 50, "conductor", 18, 54, "conductor", 18, 55, "conductor", 18, 56, "conductor", 18, 58, "conductor", 18, 59, "tail", 18, 60, "conductor", 18, 64, "conductor", 19, 7, "conductor", 19, 9, "conductor", 19, 11, "conductor", 19, 17, "conductor", 19, 21, "conductor", 19, 23, "tail", 19, 27, "conductor", 19, 31, "conductor", 19, 33, "tail", 19, 37, "conductor", 19, 41, "conductor", 19, 43, "tail", 19, 47, "conductor", 19, 51, "conductor", 19, 53, "tail", 19, 57, "conductor", 19, 64, "conductor", 20, 7, "conductor", 20, 9, "conductor", 20, 11, "conductor", 20, 17, "conductor", 20, 21, "conductor", 20, 23, "head", 20, 27, "conductor", 20, 31, "conductor", 20, 33, "head", 20, 37, "conductor", 20, 41, "conductor", 20, 43, "head", 20, 47, "conductor", 20, 51, "conductor", 20, 53, "head", 20, 57, "conductor", 20, 64, "conductor", 21, 7, "conductor", 21, 9, "conductor", 21, 11, "conductor", 21, 16, "conductor", 21, 17, "conductor", 21, 18, "conductor", 21, 22, "conductor", 21, 26, "conductor", 21, 27, "conductor", 21, 28, "conductor", 21, 32, "conductor", 21, 36, "conductor", 21, 37, "conductor", 21, 38, "conductor", 21, 42, "conductor", 21, 46, "conductor", 21, 47, "conductor", 21, 48, "conductor", 21, 52, "conductor", 21, 56, "conductor", 21, 57, "conductor", 21, 58, "conductor", 21, 64, "conductor", 22, 7, "conductor", 22, 9, "conductor", 22, 11, "conductor", 22, 17, "conductor", 22, 27, "conductor", 22, 37, "conductor", 22, 47, "conductor", 22, 57, "conductor", 22, 64, "conductor", 23, 7, "conductor", 23, 9, "conductor", 23, 11, "conductor", 23, 16, "conductor", 23, 18, "conductor", 23, 26, "conductor", 23, 28, "conductor", 23, 36, "conductor", 23, 38, "conductor", 23, 46, "conductor", 23, 48, "conductor", 23, 56, "conductor", 23, 58, "conductor", 23, 64, "conductor", 24, 7, "conductor", 24, 9, "conductor", 24, 11, "conductor", 24, 16, "conductor", 24, 18, "conductor", 24, 26, "conductor", 24, 28, "conductor", 24, 36, "conductor", 24, 38, "conductor", 24, 46, "conductor", 24, 48, "conductor", 24, 56, "conductor", 24, 58, "conductor", 24, 64, "conductor", 25, 7, "conductor", 25, 9, "conductor", 25, 11, "conductor", 25, 12, "conductor", 25, 13, "conductor", 25, 14, "conductor", 25, 15, "conductor", 25, 16, "conductor", 25, 17, "conductor", 25, 19, "conductor", 25, 20, "conductor", 25, 21, "conductor", 25, 22, "conductor", 25, 23, "conductor", 25, 24, "conductor", 25, 25, "conductor", 25, 26, "conductor", 25, 27, "conductor", 25, 29, "conductor", 25, 30, "conductor", 25, 31, "conductor", 25, 32, "conductor", 25, 33, "conductor", 25, 34, "conductor", 25, 35, "conductor", 25, 36, "conductor", 25, 37, "conductor", 25, 39, "conductor", 25, 40, "conductor", 25, 41, "conductor", 25, 42, "conductor", 25, 43, "conductor", 25, 44, "conductor", 25, 45, "conductor", 25, 46, "conductor", 25, 47, "conductor", 25, 49, "conductor", 25, 50, "conductor", 25, 51, "conductor", 25, 52, "conductor", 25, 53, "conductor", 25, 54, "conductor", 25, 55, "conductor", 25, 56, "conductor", 25, 57, "conductor", 25, 59, "conductor", 25, 64, "conductor", 26, 7, "conductor", 26, 9, "conductor", 26, 16, "conductor", 26, 26, "conductor", 26, 36, "conductor", 26, 46, "conductor", 26, 56, "conductor", 26, 60, "conductor", 26, 64, "conductor", 27, 7, "conductor", 27, 9, "conductor", 27, 59, "conductor", 27, 64, "conductor", 28, 7, "conductor", 28, 9, "conductor", 28, 56, "conductor", 28, 58, "conductor", 28, 64, "conductor", 29, 7, "conductor", 29, 10, "conductor", 29, 11, "conductor", 29, 12, "conductor", 29, 13, "conductor", 29, 14, "conductor", 29, 15, "conductor", 29, 16, "conductor", 29, 17, "conductor", 29, 18, "conductor", 29, 19, "conductor", 29, 20, "conductor", 29, 21, "conductor", 29, 22, "conductor", 29, 23, "conductor", 29, 24, "conductor", 29, 25, "conductor", 29, 26, "conductor", 29, 27, "conductor", 29, 28, "conductor", 29, 29, "conductor", 29, 30, "conductor", 29, 31, "conductor", 29, 32, "conductor", 29, 33, "conductor", 29, 34, "conductor", 29, 35, "conductor", 29, 36, "conductor", 29, 37, "conductor", 29, 38, "conductor", 29, 39, "conductor", 29, 40, "conductor", 29, 41, "conductor", 29, 42, "conductor", 29, 43, "conductor", 29, 44, "conductor", 29, 45, "conductor", 29, 46, "conductor", 29, 47, "conductor", 29, 48, "conductor", 29, 49, "conductor", 29, 50, "conductor", 29, 51, "conductor", 29, 52, "conductor", 29, 53, "conductor", 29, 54, "conductor", 29, 55, "conductor", 29, 56, "conductor", 29, 57, "conductor", 29, 58, "conductor", 29, 59, "conductor", 29, 64, "conductor", 30, 8, "conductor", 30, 56, "conductor", 30, 59, "conductor", 30, 64, "conductor", 31, 7, "conductor", 31, 9, "conductor", 31, 12, "conductor", 31, 13, "conductor", 31, 15, "conductor", 31, 17, "conductor", 31, 19, "conductor", 31, 21, "conductor", 31, 23, "conductor", 31, 25, "conductor", 31, 27, "conductor", 31, 29, "conductor", 31, 31, "conductor", 31, 33, "conductor", 31, 35, "conductor", 31, 37, "conductor", 31, 39, "conductor", 31, 41, "conductor", 31, 43, "conductor", 31, 45, "conductor", 31, 47, "conductor", 31, 49, "conductor", 31, 51, "conductor", 31, 53, "conductor", 31, 55, "conductor", 31, 56, "conductor", 31, 57, "conductor", 31, 58, "conductor", 31, 59, "conductor", 31, 64, "conductor", 32, 7, "conductor", 32, 10, "conductor", 32, 11, "conductor", 32, 13, "conductor", 32, 14, "conductor", 32, 16, "conductor", 32, 18, "conductor", 32, 20, "conductor", 32, 22, "conductor", 32, 24, "conductor", 32, 26, "conductor", 32, 28, "conductor", 32, 30, "conductor", 32, 32, "conductor", 32, 34, "conductor", 32, 36, "conductor", 32, 38, "conductor", 32, 40, "conductor", 32, 42, "conductor", 32, 44, "conductor", 32, 46, "conductor", 32, 48, "conductor", 32, 50, "conductor", 32, 52, "conductor", 32, 54, "conductor", 32, 56, "conductor", 32, 58, "conductor", 32, 64, "conductor", 33, 7, "conductor", 33, 12, "conductor", 33, 13, "conductor", 33, 59, "conductor", 33, 60, "conductor", 33, 61, "conductor", 33, 62, "conductor", 33, 63, "conductor", 34, 8, "conductor", 34, 31, "conductor", 34, 35, "conductor", 34, 51, "conductor", 34, 55, "conductor", 34, 58, "conductor", 35, 9, "conductor", 35, 12, "conductor", 35, 13, "conductor", 35, 30, "conductor", 35, 32, "conductor", 35, 34, "conductor", 35, 36, "conductor", 35, 50, "conductor", 35, 52, "conductor", 35, 54, "conductor", 35, 56, "conductor", 35, 58, "conductor", 36, 10, "conductor", 36, 11, "conductor", 36, 13, "conductor", 36, 14, "conductor", 36, 15, "conductor", 36, 16, "conductor", 36, 17, "conductor", 36, 29, "conductor", 36, 32, "conductor", 36, 34, "conductor", 36, 36, "conductor", 36, 49, "conductor", 36, 52, "conductor", 36, 54, "conductor", 36, 56, "conductor", 36, 58, "conductor", 37, 12, "conductor", 37, 13, "conductor", 37, 18, "conductor", 37, 27, "conductor", 37, 28, "conductor", 37, 33, "conductor", 37, 36, "conductor", 37, 38, "conductor", 37, 47, "conductor", 37, 48, "conductor", 37, 53, "conductor", 37, 56, "conductor", 37, 58, "conductor", 38, 19, "conductor", 38, 21, "conductor", 38, 22, "conductor", 38, 24, "conductor", 38, 26, "conductor", 38, 37, "conductor", 38, 39, "conductor", 38, 41, "conductor", 38, 42, "conductor", 38, 44, "conductor", 38, 46, "conductor", 38, 57, "conductor", 39, 20, "conductor", 39, 23, "conductor", 39, 24, "conductor", 39, 25, "conductor", 39, 26, "conductor", 39, 27, "conductor", 39, 34, "conductor", 39, 37, "conductor", 39, 40, "conductor", 39, 43, "conductor", 39, 44, "conductor", 39, 45, "conductor", 39, 46, "conductor", 39, 47, "conductor", 39, 54, "head", 39, 57, "conductor", 40, 20, "conductor", 40, 22, "conductor", 40, 24, "conductor", 40, 26, "conductor", 40, 30, "conductor", 40, 31, "conductor", 40, 33, "conductor", 40, 34, "conductor", 40, 35, "conductor", 40, 36, "conductor", 40, 40, "conductor", 40, 42, "conductor", 40, 44, "conductor", 40, 46, "conductor", 40, 50, "head", 40, 51, "tail", 40, 53, "tail", 40, 54, "head", 40, 55, "conductor", 40, 56, "conductor", 41, 20, "conductor", 41, 22, "conductor", 41, 26, "conductor", 41, 29, "conductor", 41, 32, "conductor", 41, 34, "conductor", 41, 40, "conductor", 41, 42, "conductor", 41, 46, "conductor", 41, 49, "conductor", 41, 52, "conductor", 41, 54, "head", 42, 20, "conductor", 42, 23, "conductor", 42, 24, "conductor", 42, 25, "conductor", 42, 29, "conductor", 42, 32, "conductor", 42, 34, "conductor", 42, 40, "conductor", 42, 43, "conductor", 42, 44, "conductor", 42, 45, "head", 42, 49, "conductor", 42, 52, "conductor", 42, 54, "conductor", 43, 21, "conductor", 43, 26, "conductor", 43, 27, "conductor", 43, 28, "conductor", 43, 33, "conductor", 43, 41, "conductor", 43, 46, "tail", 43, 47, "conductor", 43, 48, "conductor", 43, 53, "conductor", 44, 22, "conductor", 44, 32, "conductor", 44, 33, "conductor", 44, 34, "conductor", 44, 42, "conductor", 44, 52, "conductor", 44, 53, "conductor", 44, 54, "conductor", 45, 23, "conductor", 45, 33, "conductor", 45, 43, "conductor", 45, 53, "conductor", 46, 24, "conductor", 46, 25, "conductor", 46, 26, "conductor", 46, 27, "conductor", 46, 28, "conductor", 46, 29, "conductor", 46, 30, "conductor", 46, 31, "conductor", 46, 32, "conductor", 46, 44, "conductor", 46, 45, "conductor", 46, 46, "conductor", 46, 47, "conductor", 46, 48, "conductor", 46, 49, "conductor", 46, 50, "conductor", 46, 51, "conductor", 46, 52, "conductor"],
-[0, 6, "conductor", 0, 12, "conductor", 0, 18, "conductor", 0, 24, "conductor", 0, 30, "conductor", 0, 36, "conductor", 0, 42, "conductor", 1, 8, "conductor", 2, 7, "conductor", 2, 9, "conductor", 2, 10, "conductor", 2, 11, "conductor", 2, 12, "conductor", 2, 13, "conductor", 2, 14, "conductor", 2, 15, "conductor", 2, 16, "conductor", 2, 17, "conductor", 2, 18, "conductor", 2, 19, "conductor", 2, 20, "conductor", 2, 21, "conductor", 2, 22, "conductor", 2, 23, "conductor", 2, 24, "conductor", 2, 25, "conductor", 2, 26, "conductor", 2, 27, "conductor", 2, 28, "conductor", 2, 29, "conductor", 2, 30, "conductor", 2, 31, "conductor", 2, 32, "conductor", 2, 33, "conductor", 2, 34, "conductor", 2, 35, "conductor", 2, 36, "conductor", 2, 37, "conductor", 2, 38, "conductor", 2, 39, "conductor", 2, 40, "conductor", 2, 41, "conductor", 2, 42, "conductor", 2, 43, "conductor", 2, 44, "conductor", 2, 45, "conductor", 2, 46, "conductor", 3, 7, "conductor", 3, 47, "conductor", 4, 8, "conductor", 4, 9, "conductor", 4, 10, "conductor", 4, 11, "conductor", 4, 12, "conductor", 4, 13, "conductor", 4, 14, "conductor", 4, 15, "conductor", 4, 16, "conductor", 4, 17, "conductor", 4, 18, "conductor", 4, 19, "conductor", 4, 20, "conductor", 4, 21, "conductor", 4, 22, "conductor", 4, 23, "conductor", 4, 24, "conductor", 4, 25, "conductor", 4, 26, "conductor", 4, 27, "conductor", 4, 28, "conductor", 4, 29, "conductor", 4, 30, "conductor", 4, 31, "conductor", 4, 32, "conductor", 4, 33, "conductor", 4, 34, "conductor", 4, 35, "conductor", 4, 36, "conductor", 4, 37, "conductor", 4, 38, "conductor", 4, 39, "conductor", 4, 40, "conductor", 4, 41, "head", 4, 42, "tail", 4, 43, "conductor", 4, 44, "conductor", 4, 45, "conductor", 4, 46, "conductor", 6, 2, "conductor", 6, 3, "conductor", 6, 4, "conductor", 6, 5, "conductor", 6, 6, "conductor", 6, 7, "conductor", 6, 8, "conductor", 6, 9, "conductor", 6, 10, "conductor", 6, 11, "conductor", 6, 12, "conductor", 6, 13, "conductor", 6, 14, "conductor", 6, 15, "conductor", 6, 16, "conductor", 6, 17, "conductor", 6, 18, "conductor", 6, 19, "conductor", 6, 20, "conductor", 6, 21, "conductor", 6, 22, "conductor", 6, 23, "conductor", 6, 24, "conductor", 6, 25, "conductor", 6, 26, "conductor", 6, 27, "conductor", 6, 28, "conductor", 6, 29, "head", 6, 30, "tail", 6, 31, "conductor", 6, 32, "conductor", 6, 33, "conductor", 6, 34, "conductor", 6, 35, "head", 6, 36, "tail", 6, 37, "conductor", 6, 38, "conductor", 6, 39, "conductor", 6, 40, "conductor", 6, 41, "head", 6, 42, "tail", 6, 43, "conductor", 6, 44, "conductor", 6, 45, "conductor", 6, 46, "conductor", 7, 1, "conductor", 7, 47, "conductor", 8, 1, "conductor", 8, 4, "conductor", 8, 5, "conductor", 8, 6, "conductor", 8, 7, "conductor", 8, 8, "conductor", 8, 9, "conductor", 8, 10, "conductor", 8, 11, "conductor", 8, 12, "conductor", 8, 13, "conductor", 8, 14, "conductor", 8, 15, "conductor", 8, 16, "conductor", 8, 17, "head", 8, 18, "tail", 8, 19, "conductor", 8, 20, "conductor", 8, 21, "conductor", 8, 22, "conductor", 8, 23, "head", 8, 24, "tail", 8, 25, "conductor", 8, 26, "conductor", 8, 27, "conductor", 8, 28, "conductor", 8, 29, "conductor", 8, 30, "conductor", 8, 31, "conductor", 8, 32, "conductor", 8, 33, "conductor", 8, 34, "conductor", 8, 35, "conductor", 8, 36, "conductor", 8, 37, "conductor", 8, 38, "conductor", 8, 39, "conductor", 8, 40, "conductor", 8, 41, "head", 8, 42, "tail", 8, 43, "conductor", 8, 44, "conductor", 8, 45, "conductor", 8, 48, "conductor", 9, 1, "conductor", 9, 3, "conductor", 9, 46, "conductor", 9, 48, "conductor", 10, 1, "conductor", 10, 3, "conductor", 10, 43, "conductor", 10, 44, "conductor", 10, 45, "conductor", 10, 48, "conductor", 11, 1, "conductor", 11, 4, "conductor", 11, 5, "conductor", 11, 6, "conductor", 11, 7, "conductor", 11, 8, "conductor", 11, 42, "conductor", 11, 48, "conductor", 12, 1, "conductor", 12, 9, "conductor", 12, 43, "conductor", 12, 44, "conductor", 12, 48, "conductor", 13, 1, "conductor", 13, 5, "conductor", 13, 6, "conductor", 13, 7, "conductor", 13, 8, "conductor", 13, 45, "conductor", 13, 48, "conductor", 14, 1, "conductor", 14, 4, "conductor", 14, 46, "conductor", 14, 48, "conductor", 15, 1, "conductor", 15, 4, "conductor", 15, 46, "conductor", 15, 48, "conductor", 16, 1, "conductor", 16, 4, "conductor", 16, 46, "conductor", 16, 48, "conductor", 17, 1, "conductor", 17, 4, "conductor", 17, 46, "conductor", 17, 48, "conductor", 18, 1, "conductor", 18, 4, "conductor", 18, 46, "conductor", 18, 48, "conductor", 19, 1, "conductor", 19, 4, "conductor", 19, 46, "conductor", 19, 48, "conductor", 20, 1, "conductor", 20, 4, "conductor", 20, 46, "conductor", 20, 48, "conductor", 21, 1, "conductor", 21, 4, "conductor", 21, 46, "conductor", 21, 48, "conductor", 22, 1, "conductor", 22, 4, "conductor", 22, 46, "conductor", 22, 48, "conductor", 23, 1, "conductor", 23, 4, "conductor", 23, 46, "conductor", 23, 48, "conductor", 24, 1, "conductor", 24, 4, "conductor", 24, 46, "conductor", 24, 48, "conductor", 25, 1, "conductor", 25, 4, "conductor", 25, 46, "conductor", 25, 48, "conductor", 26, 1, "conductor", 26, 4, "conductor", 26, 46, "conductor", 26, 48, "conductor", 27, 1, "conductor", 27, 4, "conductor", 27, 46, "conductor", 27, 48, "conductor", 28, 1, "conductor", 28, 4, "conductor", 28, 46, "conductor", 28, 48, "conductor", 29, 1, "conductor", 29, 4, "conductor", 29, 22, "conductor", 29, 23, "conductor", 29, 24, "conductor", 29, 26, "conductor", 29, 27, "conductor", 29, 46, "conductor", 29, 48, "conductor", 30, 1, "conductor", 30, 4, "conductor", 30, 21, "conductor", 30, 25, "conductor", 30, 28, "conductor", 30, 29, "conductor", 30, 35, "conductor", 30, 46, "conductor", 30, 48, "conductor", 31, 1, "conductor", 31, 4, "conductor", 31, 22, "conductor", 31, 24, "conductor", 31, 25, "conductor", 31, 26, "conductor", 31, 30, "conductor", 31, 31, "conductor", 31, 32, "conductor", 31, 33, "conductor", 31, 34, "conductor", 31, 36, "conductor", 31, 41, "conductor", 31, 46, "conductor", 31, 48, "conductor", 32, 1, "conductor", 32, 4, "conductor", 32, 16, "conductor", 32, 17, "conductor", 32, 18, "conductor", 32, 19, "conductor", 32, 20, "conductor", 32, 21, "conductor", 32, 25, "conductor", 32, 28, "conductor", 32, 36, "conductor", 32, 40, "conductor", 32, 42, "conductor", 32, 46, "conductor", 32, 48, "conductor", 33, 1, "conductor", 33, 4, "conductor", 33, 15, "conductor", 33, 24, "conductor", 33, 26, "tail", 33, 27, "head", 33, 29, "conductor", 33, 32, "conductor", 33, 35, "conductor", 33, 40, "conductor", 33, 43, "conductor", 33, 46, "conductor", 33, 48, "conductor", 34, 1, "conductor", 34, 4, "conductor", 34, 15, "conductor", 34, 20, "conductor", 34, 24, "conductor", 34, 27, "tail", 34, 29, "conductor", 34, 31, "conductor", 34, 33, "conductor", 34, 36, "conductor", 34, 37, "conductor", 34, 38, "conductor", 34, 39, "conductor", 34, 44, "conductor", 34, 45, "conductor", 34, 48, "conductor", 35, 1, "conductor", 35, 4, "conductor", 35, 15, "conductor", 35, 19, "conductor", 35, 21, "conductor", 35, 23, "conductor", 35, 24, "conductor", 35, 25, "conductor", 35, 28, "conductor", 35, 31, "conductor", 35, 33, "conductor", 35, 35, "conductor", 35, 39, "conductor", 35, 41, "conductor", 35, 48, "conductor", 36, 1, "conductor", 36, 4, "conductor", 36, 15, "conductor", 36, 19, "conductor", 36, 21, "conductor", 36, 24, "conductor", 36, 30, "conductor", 36, 33, "conductor", 36, 35, "conductor", 36, 37, "conductor", 36, 40, "conductor", 36, 41, "conductor", 36, 42, "conductor", 36, 44, "conductor", 36, 45, "conductor", 36, 46, "conductor", 36, 47, "conductor", 37, 1, "conductor", 37, 4, "conductor", 37, 15, "conductor", 37, 17, "conductor", 37, 19, "conductor", 37, 22, "conductor", 37, 23, "conductor", 37, 25, "conductor", 37, 27, "conductor", 37, 29, "conductor", 37, 30, "conductor", 37, 31, "conductor", 37, 33, "conductor", 37, 36, "conductor", 37, 37, "conductor", 37, 38, "conductor", 37, 39, "conductor", 37, 41, "conductor", 37, 43, "conductor", 38, 1, "conductor", 38, 4, "conductor", 38, 16, "conductor", 38, 17, "conductor", 38, 18, "conductor", 38, 19, "conductor", 38, 23, "conductor", 38, 26, "conductor", 38, 28, "conductor", 38, 30, "conductor", 38, 33, "conductor", 38, 35, "conductor", 38, 37, "conductor", 38, 39, "conductor", 38, 43, "conductor", 39, 1, "conductor", 39, 4, "conductor", 39, 15, "conductor", 39, 17, "conductor", 39, 19, "conductor", 39, 22, "conductor", 39, 23, "conductor", 39, 24, "conductor", 39, 26, "conductor", 39, 28, "conductor", 39, 30, "conductor", 39, 32, "conductor", 39, 35, "conductor", 39, 39, "conductor", 39, 43, "conductor", 40, 1, "conductor", 40, 4, "conductor", 40, 15, "conductor", 40, 20, "conductor", 40, 23, "conductor", 40, 26, "conductor", 40, 29, "conductor", 40, 32, "conductor", 40, 35, "conductor", 40, 37, "conductor", 40, 40, "conductor", 40, 43, "conductor", 41, 2, "conductor", 41, 5, "conductor", 41, 15, "conductor", 41, 17, "conductor", 41, 21, "conductor", 41, 22, "conductor", 41, 24, "conductor", 41, 26, "conductor", 41, 28, "conductor", 41, 29, "conductor", 41, 30, "conductor", 41, 32, "conductor", 41, 34, "conductor", 41, 36, "conductor", 41, 37, "conductor", 41, 38, "conductor", 41, 41, "conductor", 41, 43, "conductor", 42, 3, "conductor", 42, 6, "conductor", 42, 16, "conductor", 42, 17, "conductor", 42, 18, "conductor", 42, 19, "conductor", 42, 22, "conductor", 42, 25, "conductor", 42, 29, "conductor", 42, 33, "conductor", 42, 37, "conductor", 42, 39, "conductor", 42, 40, "conductor", 42, 43, "conductor", 43, 4, "conductor", 43, 7, "conductor", 43, 17, "conductor", 43, 20, "conductor", 43, 22, "conductor", 43, 30, "conductor", 43, 36, "conductor", 43, 43, "conductor", 44, 5, "conductor", 44, 8, "conductor", 44, 15, "conductor", 44, 16, "conductor", 44, 17, "conductor", 44, 18, "conductor", 44, 20, "conductor", 44, 22, "conductor", 44, 27, "conductor", 44, 28, "conductor", 44, 31, "conductor", 44, 33, "conductor", 44, 35, "conductor", 44, 36, "conductor", 44, 37, "conductor", 44, 40, "conductor", 44, 41, "conductor", 44, 42, "conductor", 45, 6, "conductor", 45, 9, "conductor", 45, 10, "conductor", 45, 11, "conductor", 45, 12, "conductor", 45, 13, "conductor", 45, 14, "conductor", 45, 15, "conductor", 45, 18, "conductor", 45, 20, "conductor", 45, 22, "conductor", 45, 26, "conductor", 45, 29, "conductor", 45, 32, "conductor", 45, 33, "conductor", 45, 34, "conductor", 45, 36, "conductor", 45, 39, "conductor", 46, 7, "conductor", 46, 15, "conductor", 46, 16, "conductor", 46, 17, "conductor", 46, 18, "conductor", 46, 21, "conductor", 46, 27, "head", 46, 28, "tail", 46, 30, "conductor", 46, 31, "conductor", 46, 33, "conductor", 46, 37, "conductor", 46, 38, "conductor", 46, 40, "conductor", 46, 41, "conductor", 46, 42, "conductor", 47, 8, "conductor", 47, 17, "conductor", 47, 43, "conductor", 48, 9, "conductor", 48, 10, "conductor", 48, 11, "conductor", 48, 12, "conductor", 48, 13, "conductor", 48, 14, "conductor", 48, 15, "conductor", 48, 16, "conductor", 48, 18, "conductor", 48, 19, "conductor", 48, 20, "conductor", 48, 21, "conductor", 48, 22, "conductor", 48, 23, "conductor", 48, 24, "conductor", 48, 25, "conductor", 48, 26, "conductor", 48, 27, "conductor", 48, 28, "conductor", 48, 29, "conductor", 48, 30, "conductor", 48, 31, "conductor", 48, 32, "conductor", 48, 33, "conductor", 48, 34, "conductor", 48, 35, "conductor", 48, 36, "conductor", 48, 37, "conductor", 48, 38, "conductor", 48, 39, "conductor", 48, 40, "conductor", 48, 41, "conductor", 48, 42, "conductor"]];
+[6,13,1,6,20,1,7,12,1,7,14,2,7,19,1,7,21,2,8,12,1,8,14,3,8,19,1,8,21,3,9,12,1,9,14,1,9,19,1,9,21,1,10,12,1,10,14,1,10,19,1,10,21,1,11,12,1,11,14,1,11,19,1,11,21,1,12,13,1,12,20,1,13,13,1,13,20,1,14,13,1,14,20,1,15,13,1,15,20,1,16,13,1,16,20,1,17,13,1,17,20,1,18,13,1,18,20,1,19,13,1,19,20,1,20,12,1,20,13,1,20,14,1,20,19,1,20,21,1,21,12,1,21,14,1,21,19,1,21,20,1,21,21,1,22,13,1,22,20,1,23,13,1,23,20,1,24,13,1,24,20,1,25,13,1,25,20,1,26,13,1,26,20,1,27,13,1,27,20,1,28,13,1,28,20,1,29,13,1,29,20,1,30,13,1,30,20,1],
+[11,25,3,12,24,1,12,26,2,13,24,1,13,26,1,14,24,1,14,26,1,15,24,1,15,26,1,16,24,1,16,26,1,17,24,1,17,26,1,18,24,1,18,26,1,19,24,1,19,26,1,20,24,1,20,26,1,21,24,1,21,26,1,22,20,1,22,21,1,22,22,1,22,25,1,23,19,1,23,20,1,23,22,1,23,23,1,23,24,1,24,18,1,24,20,1,24,22,1,25,18,1,25,20,1,25,21,1,25,22,1,26,18,1,26,21,1,27,18,1,27,21,1,28,18,1,28,21,1,29,18,1,29,21,1,30,18,1,30,21,1,31,18,1,31,21,1,32,18,1,32,21,1,33,19,1,33,21,1,34,20,1],
+[8,17,2,8,21,2,9,16,1,9,18,3,9,20,1,9,22,3,10,16,1,10,18,1,10,20,1,10,22,1,11,16,3,11,18,1,11,20,1,11,22,1,12,16,2,12,18,1,12,20,1,12,22,1,13,16,1,13,18,1,13,20,1,13,22,1,14,16,1,14,18,1,14,20,1,14,22,2,15,17,1,15,21,3,16,17,1,16,21,2,17,17,1,17,21,1,18,17,1,18,21,1,19,17,1,19,21,1,20,17,1,20,21,1,21,17,1,21,21,1,22,17,1,22,21,1,23,17,1,23,19,1,23,21,1,24,18,1,24,19,1,24,20,1,25,19,1,26,19,1,27,19,1,28,19,1,29,19,1,30,19,1,31,19,1,32,19,1,33,19,1],
+[8,13,2,8,19,2,9,12,1,9,14,3,9,18,1,9,20,3,10,12,1,10,14,1,10,18,1,10,20,1,11,12,3,11,14,1,11,18,1,11,20,1,12,12,2,12,14,1,12,18,1,12,20,2,13,12,1,13,14,1,13,18,1,13,20,3,14,12,1,14,14,1,14,18,1,14,20,1,15,13,1,15,19,1,16,13,1,16,19,1,17,13,1,17,19,1,18,13,1,18,19,1,19,13,1,19,19,1,20,13,1,20,19,1,21,13,1,21,18,1,22,13,1,22,15,1,22,17,1,23,14,1,23,15,1,23,16,1,24,15,1,24,17,1,25,17,1,26,17,1,27,17,1,28,17,1,29,17,1,30,17,1,31,17,1,32,17,1,33,17,1],
+[7,13,2,7,19,2,8,12,1,8,14,3,8,18,1,8,20,3,9,12,1,9,14,1,9,18,1,9,20,1,10,12,1,10,14,1,10,18,1,10,20,1,11,12,1,11,14,1,11,18,1,11,20,1,12,12,3,12,14,1,12,18,1,12,20,1,13,12,2,13,14,1,13,18,1,13,20,2,14,12,1,14,14,1,14,18,1,14,20,3,15,12,1,15,14,1,15,18,1,15,20,1,16,13,1,16,19,1,17,13,1,17,19,1,18,13,1,18,19,1,19,13,1,19,19,1,20,13,1,20,19,1,21,13,1,21,19,1,22,13,1,22,19,1,23,13,1,23,19,1,24,13,1,24,19,1,25,13,1,25,15,1,25,16,1,25,17,1,25,19,1,26,14,1,26,15,1,26,17,1,26,18,1,27,15,1,27,17,1,28,14,1,28,15,1,28,16,1,28,17,1,29,15,1,29,17,1,30,15,1,30,17,1,31,15,1,31,17,1,32,15,1,32,17,1,33,15,1,33,17,1,34,15,1,34,17,1,35,15,1,35,17,1,36,15,1,36,17,1],
+[9,14,2,9,23,2,10,13,1,10,15,3,10,22,1,10,24,3,11,13,1,11,15,1,11,22,1,11,24,1,12,13,1,12,15,1,12,22,1,12,24,1,13,13,1,13,15,1,13,22,1,13,24,1,14,13,3,14,15,1,14,22,1,14,24,1,15,13,2,15,15,1,15,22,1,15,24,2,16,13,1,16,15,1,16,22,1,16,24,3,17,13,1,17,15,1,17,22,1,17,24,1,18,14,1,18,23,1,19,14,1,19,23,1,20,14,1,20,23,1,21,14,1,21,23,1,22,14,1,22,23,1,23,14,1,23,23,1,24,14,1,24,23,1,25,14,1,25,23,1,26,14,1,26,21,1,26,23,1,27,14,1,27,16,1,27,18,1,27,19,1,27,20,1,27,21,1,27,22,1,28,15,1,28,16,1,28,17,1,28,18,1,28,21,1,29,16,1,29,19,1,29,20,1,30,19,1,31,19,1,32,19,1,33,19,1,34,19,1,35,19,1,36,19,1,37,19,1,38,19,1],
+[2,14,2,2,20,2,3,13,1,3,15,3,3,19,1,3,21,3,4,13,1,4,15,1,4,19,1,4,21,1,5,13,1,5,15,1,5,19,1,5,21,1,6,13,1,6,15,1,6,19,1,6,21,1,7,13,3,7,15,1,7,19,1,7,21,1,8,13,2,8,15,1,8,19,1,8,21,2,9,13,1,9,15,1,9,19,1,9,21,3,10,13,1,10,15,1,10,19,1,10,21,1,11,14,1,11,20,1,12,12,1,12,14,1,12,20,1,12,22,1,13,14,1,13,20,1,14,14,1,14,20,1,15,14,1,15,20,1,16,14,1,16,20,1,17,12,1,17,14,1,17,20,1,17,22,1,18,14,1,18,20,1,19,14,1,19,16,1,19,17,1,19,18,1,19,20,1,20,15,1,20,16,1,20,18,1,20,19,1,20,20,1,21,16,1,21,18,1,21,21,1,21,22,1,21,23,1,22,16,1,22,17,1,22,18,1,22,24,1,23,17,1,23,20,1,23,22,1,23,23,1,24,15,1,24,16,1,24,18,1,24,19,1,24,20,1,24,21,1,25,14,1,25,17,1,25,20,1,25,22,1,25,23,1,25,24,1,25,25,1,26,14,1,26,17,1,26,26,1,27,14,1,27,17,1,27,26,1,28,14,1,28,16,1,28,17,1,28,18,1,28,24,1,28,26,1,29,13,1,29,17,1,29,20,1,29,22,1,29,23,1,29,24,1,29,25,1,30,12,1,30,15,1,30,16,1,30,18,1,30,19,1,30,20,1,30,21,1,30,24,1,31,12,1,31,14,1,31,16,1,31,20,1,31,22,1,31,23,1,32,12,1,32,14,1,32,16,1,32,18,1,32,22,1,33,12,1,33,15,1,33,20,1,33,21,1,34,12,1,34,19,1,35,12,1,35,14,1,35,15,1,35,16,1,35,18,1,36,13,1,36,14,1,36,16,1,36,17,1,37,14,1,37,16,1,38,14,1,38,15,1,38,16,1,39,15,1,40,15,1,41,15,1,42,15,1,43,15,1,44,15,1,45,15,1,46,15,1,47,15,1,48,15,1,49,15,1],
+[8,12,1,8,13,1,8,14,1,8,15,1,8,16,1,8,17,1,8,18,1,8,19,1,8,20,1,8,21,1,8,22,1,8,23,1,8,24,1,8,25,1,8,26,1,8,27,1,8,28,1,8,29,1,8,30,1,8,32,1,8,33,1,8,34,1,9,11,1,9,31,1,9,35,1,10,10,1,10,17,1,10,18,1,10,19,1,10,20,1,10,21,1,10,22,1,10,23,1,10,24,1,10,25,1,10,26,1,10,27,1,10,28,1,10,29,1,10,32,1,10,36,1,11,9,1,11,16,1,11,30,1,11,33,1,11,37,1,12,9,1,12,17,1,12,18,1,12,19,1,12,20,1,12,21,1,12,22,1,12,23,1,12,24,1,12,25,1,12,26,1,12,30,1,12,33,1,12,37,1,13,9,1,13,16,1,13,26,1,13,30,1,13,32,1,13,34,1,13,36,1,13,38,1,14,9,1,14,16,1,14,26,1,14,30,1,14,32,1,14,33,1,14,34,1,14,36,1,14,37,1,14,38,1,15,9,1,15,16,1,15,26,1,15,30,1,15,33,1,15,37,1,16,9,1,16,16,1,16,26,1,16,30,1,16,32,1,16,37,1,17,9,1,17,12,1,17,14,1,17,15,2,17,16,2,17,17,2,17,22,1,17,24,1,17,25,1,17,26,1,17,27,1,17,30,1,17,33,1,17,37,1,18,10,1,18,11,1,18,12,1,18,13,1,18,16,3,18,20,1,18,21,1,18,22,1,18,23,1,18,26,1,18,30,1,18,32,1,18,37,1,19,9,1,19,12,1,19,14,1,19,15,1,19,19,2,19,22,1,19,24,1,19,25,1,19,30,1,19,33,1,19,38,1,20,9,1,20,16,3,20,19,3,20,26,1,20,30,1,20,32,1,20,39,1,21,9,1,21,16,2,21,19,1,21,26,1,21,30,1,21,33,1,21,40,1,21,41,1,21,42,1,21,43,1,22,10,1,22,11,1,22,16,1,22,20,1,22,21,1,22,26,1,22,30,1,22,32,1,22,39,1,22,44,1,23,12,1,23,16,1,23,22,1,23,26,1,23,30,1,23,33,1,23,39,1,23,41,1,23,42,1,23,45,1,24,10,1,24,11,1,24,16,1,24,20,3,24,21,2,24,26,1,24,30,1,24,32,1,24,40,1,24,43,1,24,46,1,25,9,1,25,16,1,25,19,1,25,26,1,25,30,1,25,33,1,25,39,1,25,40,1,25,41,1,25,43,1,25,47,1,26,9,1,26,16,3,26,19,1,26,26,1,26,30,1,26,32,1,26,40,1,26,43,1,26,47,1,27,9,1,27,12,1,27,14,1,27,15,2,27,16,2,27,17,2,27,19,1,27,22,1,27,24,1,27,25,1,27,26,1,27,27,1,27,30,1,27,33,1,27,39,1,27,40,1,27,41,1,27,42,1,27,44,1,27,47,1,28,10,1,28,11,1,28,12,1,28,13,1,28,16,3,28,20,1,28,21,1,28,22,1,28,23,1,28,26,1,28,30,1,28,32,1,28,38,1,28,40,1,28,44,1,28,47,1,29,9,1,29,12,1,29,14,1,29,15,1,29,19,2,29,22,1,29,24,1,29,25,1,29,30,1,29,33,1,29,38,1,29,44,1,29,47,1,30,9,1,30,16,3,30,19,3,30,26,1,30,30,1,30,32,1,30,37,1,30,42,1,30,43,1,30,47,1,31,9,1,31,16,2,31,19,1,31,26,1,31,30,1,31,33,1,31,36,1,31,41,1,31,47,1,32,10,1,32,11,1,32,16,1,32,20,1,32,21,1,32,26,1,32,30,1,32,32,1,32,35,1,32,41,1,32,47,1,33,12,1,33,16,1,33,22,1,33,26,1,33,30,1,33,33,1,33,36,1,33,37,1,33,42,1,33,43,1,33,45,1,33,47,1,34,10,1,34,11,1,34,16,1,34,20,3,34,21,2,34,26,1,34,30,1,34,32,1,34,38,1,34,41,1,34,44,1,34,45,1,34,46,1,35,9,1,35,16,1,35,19,1,35,26,1,35,30,1,35,33,1,35,36,1,35,37,1,35,40,1,35,41,1,35,42,1,35,43,1,35,45,1,36,9,1,36,16,3,36,19,1,36,26,1,36,30,1,36,32,1,36,35,1,36,41,1,37,9,1,37,12,1,37,14,1,37,15,2,37,16,2,37,17,2,37,19,1,37,22,1,37,24,1,37,25,1,37,26,1,37,27,1,37,30,1,37,33,1,37,36,1,37,37,1,37,38,1,37,41,1,38,10,1,38,11,1,38,12,1,38,13,1,38,16,3,38,20,1,38,21,1,38,22,1,38,23,1,38,26,1,38,30,1,38,32,1,38,39,1,38,40,1,39,9,1,39,12,1,39,14,1,39,15,1,39,19,2,39,22,1,39,24,1,39,25,1,39,30,1,39,33,1,39,38,1,40,9,1,40,16,3,40,19,3,40,26,1,40,30,1,40,32,1,40,39,1,41,9,1,41,16,2,41,19,1,41,26,1,41,30,1,41,33,1,41,40,1,41,41,1,41,42,1,41,43,1,42,10,1,42,11,1,42,16,1,42,20,1,42,21,1,42,26,1,42,30,1,42,32,1,42,39,1,42,44,1,43,12,1,43,16,1,43,22,1,43,26,1,43,30,1,43,33,1,43,39,1,43,41,1,43,42,1,43,45,1,44,10,1,44,11,1,44,16,1,44,20,3,44,21,2,44,26,1,44,30,1,44,32,1,44,40,1,44,43,1,44,46,1,45,9,1,45,16,1,45,19,1,45,26,1,45,30,1,45,33,1,45,39,1,45,40,1,45,41,1,45,43,1,45,47,1,46,9,1,46,16,3,46,19,1,46,26,1,46,30,1,46,32,1,46,40,1,46,43,2,46,47,1,47,9,1,47,12,1,47,14,1,47,15,2,47,16,2,47,17,2,47,19,1,47,22,1,47,24,1,47,25,1,47,26,1,47,27,1,47,30,1,47,33,1,47,39,1,47,40,1,47,41,1,47,42,1,47,44,3,47,47,1,48,10,1,48,11,1,48,12,1,48,13,1,48,16,3,48,20,1,48,21,1,48,22,1,48,23,1,48,26,1,48,30,1,48,32,1,48,38,1,48,40,1,48,44,1,48,47,1,49,9,1,49,12,1,49,14,1,49,15,1,49,19,2,49,22,1,49,24,1,49,25,1,49,30,1,49,33,1,49,38,1,49,44,1,49,47,1,50,9,1,50,16,3,50,19,3,50,26,1,50,30,1,50,32,1,50,37,1,50,42,1,50,43,1,50,47,1,51,9,1,51,16,2,51,19,1,51,26,1,51,30,1,51,33,1,51,36,1,51,41,2,51,47,1,52,10,1,52,11,1,52,16,1,52,20,1,52,21,1,52,26,1,52,30,1,52,32,1,52,35,1,52,41,3,52,47,1,53,12,1,53,16,1,53,22,1,53,26,1,53,30,1,53,33,1,53,36,1,53,37,1,53,42,1,53,43,1,53,45,1,53,47,1,54,10,1,54,11,1,54,16,1,54,20,3,54,21,2,54,26,1,54,30,1,54,32,1,54,38,1,54,41,3,54,44,1,54,45,1,54,46,1,55,9,1,55,16,1,55,19,1,55,26,1,55,30,1,55,33,1,55,36,1,55,37,1,55,40,2,55,41,2,55,42,2,55,43,1,55,45,1,56,9,1,56,16,3,56,19,1,56,26,1,56,30,1,56,32,1,56,35,1,56,41,1,57,9,1,57,12,1,57,14,1,57,15,2,57,16,2,57,17,2,57,19,1,57,22,1,57,24,1,57,25,1,57,26,1,57,27,1,57,29,1,57,30,1,57,31,1,57,32,1,57,33,1,57,36,1,57,37,1,57,38,1,57,41,1,58,10,1,58,11,1,58,12,1,58,13,1,58,16,3,58,20,1,58,21,1,58,22,1,58,23,1,58,26,1,58,30,1,58,32,1,58,39,1,58,40,1,59,9,1,59,12,1,59,14,1,59,15,1,59,19,1,59,22,1,59,24,1,59,25,1,59,29,1,59,30,1,59,32,1,59,33,1,59,35,1,59,36,1,59,37,1,59,38,1,60,9,1,60,16,3,60,19,3,60,26,1,60,28,1,60,30,1,60,31,1,60,32,1,60,34,1,61,9,1,61,16,2,61,19,1,61,27,1,61,34,1,62,9,1,62,16,1,62,18,1,62,34,1,63,9,1,63,17,1,63,34,1,64,9,1,64,34,1,65,10,1,65,11,1,65,12,1,65,13,1,65,14,1,65,15,1,65,16,1,65,17,1,65,18,1,65,19,1,65,20,1,65,21,1,65,22,1,65,23,1,65,24,1,65,25,1,65,26,1,65,27,1,65,28,1,65,29,1,65,30,1,65,31,1,65,32,1,65,33,1],
+[2,8,1,2,9,1,2,10,1,2,11,1,2,12,1,2,13,1,2,14,1,2,15,1,2,16,1,2,17,1,2,18,1,2,19,1,2,20,1,2,21,1,2,22,1,2,23,1,2,24,1,2,25,1,2,26,1,2,27,1,2,28,1,2,29,1,2,30,1,2,31,1,2,32,1,2,33,1,2,34,1,2,35,1,2,36,1,2,37,1,2,38,1,2,39,1,2,40,1,2,41,1,3,7,1,3,42,1,4,7,1,4,10,1,4,11,1,4,43,1,5,7,1,5,9,1,5,12,1,5,15,1,5,16,1,5,17,1,5,18,1,5,19,1,5,20,1,5,21,1,5,22,1,5,23,1,5,24,1,5,25,1,5,26,1,5,27,1,5,28,1,5,29,1,5,30,1,5,31,1,5,32,1,5,33,1,5,34,1,5,35,1,5,36,1,5,37,1,5,38,1,5,39,1,5,40,1,5,41,1,5,44,1,6,7,1,6,9,1,6,12,1,6,14,1,6,42,1,6,45,1,7,1,1,7,7,1,7,9,1,7,12,1,7,14,1,7,43,1,7,46,1,8,3,1,8,4,1,8,7,1,8,9,1,8,12,1,8,14,1,8,44,1,8,47,1,9,2,1,9,5,1,9,7,1,9,9,1,9,12,1,9,14,1,9,45,1,9,48,1,10,3,1,10,5,1,10,7,1,10,9,1,10,13,1,10,46,1,10,49,1,11,3,1,11,5,1,11,7,1,11,9,1,11,46,1,11,49,1,12,3,1,12,5,1,12,7,1,12,9,1,12,46,1,12,49,1,13,1,1,13,3,1,13,5,1,13,7,1,13,9,1,13,46,1,13,49,1,14,3,1,14,5,1,14,7,1,14,9,1,14,46,1,14,49,1,15,3,1,15,5,1,15,7,1,15,9,1,15,46,1,15,49,1,16,3,1,16,5,1,16,7,1,16,9,1,16,34,1,16,35,1,16,36,1,16,37,1,16,38,1,16,40,1,16,41,1,16,42,1,16,45,1,16,46,1,16,47,1,16,49,1,17,3,1,17,5,1,17,7,1,17,9,1,17,33,1,17,39,1,17,43,1,17,45,1,17,47,1,17,49,1,18,3,1,18,5,1,18,7,1,18,9,2,18,33,1,18,38,1,18,39,1,18,40,1,18,42,1,18,43,1,18,44,1,18,45,1,18,47,1,18,48,1,19,1,1,19,3,1,19,5,1,19,7,1,19,9,3,19,33,1,19,39,1,19,43,1,19,45,1,19,46,1,19,47,1,19,49,1,20,3,1,20,5,1,20,7,1,20,9,1,20,33,1,20,36,1,20,37,1,20,38,1,20,39,1,20,40,1,20,43,1,20,49,1,21,3,1,21,5,1,21,7,1,21,9,1,21,33,1,21,35,1,21,41,1,21,44,1,21,45,1,21,46,1,21,49,1,22,3,1,22,5,1,22,7,1,22,9,1,22,31,1,22,33,1,22,36,1,22,37,1,22,42,1,22,47,1,22,49,1,23,3,1,23,5,1,23,7,1,23,9,1,23,30,1,23,32,1,23,38,1,23,40,1,23,42,1,23,43,1,23,44,1,23,45,1,23,46,1,23,49,1,24,3,1,24,5,1,24,7,1,24,9,2,24,30,1,24,36,1,24,38,1,24,39,1,24,40,1,24,41,1,24,49,1,25,1,1,25,3,1,25,5,1,25,7,1,25,9,3,25,30,1,25,32,1,25,34,1,25,35,1,25,36,1,25,37,1,25,40,1,25,42,1,25,49,1,26,3,1,26,5,1,26,7,1,26,9,1,26,31,1,26,32,1,26,33,1,26,36,1,26,38,1,26,43,1,26,49,1,27,3,1,27,5,1,27,7,1,27,9,1,27,30,1,27,32,1,27,34,3,27,39,1,27,40,1,27,41,1,27,42,1,27,46,1,27,49,1,28,3,1,28,5,1,28,7,1,28,9,1,28,30,1,28,34,2,28,35,3,28,38,1,28,45,1,28,47,2,28,49,1,29,3,1,29,5,1,29,7,1,29,9,1,29,31,1,29,33,1,29,36,1,29,39,1,29,40,1,29,42,1,29,45,1,29,47,3,29,49,1,30,3,1,30,5,1,30,7,2,30,9,1,30,31,1,30,34,1,30,35,1,30,38,1,30,41,1,30,42,1,30,43,1,30,46,1,30,49,1,31,1,1,31,3,1,31,5,1,31,7,3,31,9,1,31,32,1,31,37,1,31,38,1,31,39,1,31,40,1,31,42,1,31,44,1,31,47,1,31,49,1,32,3,1,32,5,1,32,7,1,32,9,1,32,32,1,32,35,1,32,36,1,32,38,1,32,45,1,32,47,1,32,49,1,33,3,1,33,5,1,33,7,1,33,9,1,33,32,1,33,34,1,33,40,1,33,41,1,33,42,1,33,46,1,33,49,1,34,3,1,34,5,1,34,7,1,34,9,1,34,32,1,34,35,1,34,36,1,34,37,1,34,38,1,34,39,1,34,43,1,34,45,1,34,46,1,34,47,1,34,49,1,35,3,1,35,5,1,35,7,1,35,9,1,35,32,1,35,42,1,35,46,1,35,49,1,36,3,1,36,5,1,36,7,2,36,9,1,36,31,1,36,34,1,36,36,1,36,37,1,36,39,1,36,40,1,36,41,1,36,45,1,36,49,1,37,1,1,37,3,1,37,5,1,37,7,3,37,9,1,37,32,1,37,33,1,37,35,1,37,38,1,37,42,1,37,44,1,37,45,1,37,46,1,37,49,1,38,3,1,38,5,1,38,7,1,38,9,1,38,35,1,38,37,1,38,38,1,38,39,1,38,41,1,38,42,1,38,43,1,38,45,1,38,47,1,38,49,1,39,3,1,39,5,1,39,7,1,39,9,1,39,35,1,39,38,1,39,42,1,39,47,1,39,49,1,40,3,1,40,5,1,40,7,1,40,9,1,40,35,1,40,36,1,40,38,1,40,39,1,40,40,1,40,43,1,40,46,1,40,49,1,41,3,1,41,5,1,41,7,1,41,9,1,41,33,1,41,34,1,41,37,1,41,41,1,41,43,1,41,45,1,41,47,1,41,49,1,42,3,1,42,5,2,42,7,2,42,9,2,42,32,1,42,36,1,42,37,1,42,38,1,42,42,1,42,45,1,42,47,1,42,49,1,43,1,1,43,3,1,43,5,3,43,7,3,43,9,3,43,12,1,43,33,1,43,37,1,43,45,1,43,47,1,43,49,1,44,3,1,44,5,1,44,7,1,44,9,1,44,11,1,44,13,1,44,34,1,44,38,1,44,39,1,44,40,1,44,41,1,44,42,1,44,43,1,44,44,1,44,48,1,45,3,1,45,5,1,45,7,1,45,9,1,45,11,1,45,13,1,45,35,1,45,37,1,46,3,1,46,5,1,46,7,1,46,9,1,46,11,1,46,14,1,46,35,1,46,37,1,47,3,1,47,5,1,47,7,1,47,10,1,47,15,1,47,16,1,47,17,1,47,18,1,47,19,1,47,20,1,47,21,1,47,22,1,47,23,1,47,24,1,47,25,1,47,26,1,47,27,1,47,28,1,47,29,1,47,30,1,47,31,1,47,32,1,47,33,1,47,34,1,47,37,1,48,4,1,48,8,1,48,37,1,49,9,1,49,10,1,49,11,1,49,12,1,49,13,1,49,14,1,49,15,1,49,16,1,49,17,1,49,18,1,49,19,1,49,20,1,49,21,1,49,22,1,49,23,1,49,24,1,49,25,1,49,26,1,49,27,1,49,28,1,49,29,1,49,30,1,49,31,1,49,32,1,49,33,1,49,34,1,49,35,1,49,36,1]];
+external(pattern[1]);
+play();
 </script>
 </body>
 
