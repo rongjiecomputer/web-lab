@@ -86,6 +86,7 @@ p {
 
 <script>
 var grid = new Int8Array(105*105);
+var newGrid = new Int8Array(105*105);
 var cells = 50;
 var SIZE = 10, WIDTH = 500;
 var canvas = document.getElementById("canvas");
@@ -123,7 +124,6 @@ function drawLines() {
 }
 drawLines();
 function main() {
-  var newGrid = new Int8Array(105*105);
   for (var i = 1; i <= cells; i++) {
     for (var j = 1; j <= cells; j++) {
       switch (grid[pos(i, j)]) {
@@ -143,7 +143,10 @@ function main() {
       }
     }
   }
-  grid = newGrid;
+  var x = grid, y = newGrid;
+  grid = y;
+  newGrid = x;
+  newGrid.fill(0);
   draw();
 }
 function draw() {
@@ -187,7 +190,7 @@ function stop() {
 function reset() {
   stop();
   context.clearRect(0, 0, WIDTH, WIDTH);
-  grid = new Int8Array(105*105);
+  grid.fill(0);
 }
 function external(e) {
   reset();
